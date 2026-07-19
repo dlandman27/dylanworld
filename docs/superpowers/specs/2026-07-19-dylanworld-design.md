@@ -34,7 +34,7 @@ Tone: fun-first, full rsotw energy. Recruiters get a small "just the resume" esc
   - Walk/Run — 4 frames (cycle plays faster at higher speed)
   - Jump — 3 frames (crouch, air, land-squash)
   - Skid/Turn — 1 frame (Paper Mario flip when reversing)
-- ≈**50 hand-authored pixel frames** total, stored as compact pixel-data arrays in `js/sprites.js` (palette-indexed strings or arrays), drawn to canvas. No PNG files, so colors/pixels are instantly tweakable.
+- ≈**50 hand-authored pixel frames** total, stored as compact pixel-data arrays (palette-indexed strings) in typed sprite data under `src/config/sprites/`, drawn to canvas by `src/engine/sprites.ts`. No PNG files, so colors/pixels are instantly tweakable.
 - **Build order (risk control):** ship-worthy first pass is S/W/N idle+walk; diagonals, jump, and skid layer in afterward. Pixel authoring is the riskiest workstream — iterate on the arrays.
 
 ## Physics & Interaction
@@ -59,17 +59,23 @@ Scattered across the map; findable by wandering. A small hand-drawn compass/lege
 
 ## Architecture
 
-- **No build step, no framework.** Static files served by GitHub Pages.
+- **TypeScript + Vite.** No framework — the engine is hand-written TS compiled by Vite to a static bundle. `npm run dev` for local play, `npm run build` for the deployable output.
+- **Config-driven world:** all content and world layout live in typed config, never in engine code. Adding a project, moving a building, recoloring the palette, or adding a duck is a config edit.
+  - `src/config/world.ts` — map size, districts, landmark placements, prop spawns
+  - `src/config/projects.ts` — project cards (title, blurb, image, links)
+  - `src/config/story.ts` — story-trail stops
+  - `src/config/theme.ts` — palette, fonts, shadow/outline tokens (rsotw values as defaults)
+  - `src/config/tuning.ts` — game-feel constants (chase spring, friction, camera lag, scatter force)
+  - All config typed via interfaces in `src/config/types.ts`, so bad config fails at compile time.
 - **Rendering split:** one `<canvas>` renders world + character + physics props (60fps target with hundreds of bodies). DOM overlays render only the popup paper cards, so text is selectable and the contact form is a real form.
-- **Files:**
-  - `index.html` — shell, canvas, card containers
-  - `js/world.js` — map layout, landmarks, camera
-  - `js/sprites.js` — pixel-data spritesheets + sprite renderer
-  - `js/physics.js` — bodies, collisions, fling logic
-  - `js/cards.js` — DOM card open/close, content data
-  - `styles/` — card + UI styles (rsotw tokens)
+- **Engine modules (`src/engine/`):** `world.ts` (map + camera), `sprites.ts` (pixel-data spritesheets + renderer), `physics.ts` (bodies, collisions, fling), `cards.ts` (DOM card open/close), `input.ts` (mouse/touch).
 - **Mobile:** touch-drag leads Dylan; tap landmark to open; props fling by finger. No thumbstick.
-- **Deploy:** GitHub Pages on this repo with CNAME `dylanlandman.com` at cutover. Until cutover, preview via the repo's default Pages URL. Old repo's CNAME changes to `2020.dylanlandman.com` at the same time.
+
+## Hosting & Analytics
+
+- **Vercel** hosts the site (same model as rsotw production): deploy = git push, Vite build runs on Vercel, static output served on its CDN. Serverless functions are available later if an API is ever wanted (e.g. visitor guestbook) — none needed at launch.
+- **Google Analytics (GA4)** via the client gtag script, loaded from config (`src/config/analytics.ts` holds the measurement ID; empty ID = analytics off, so dev/preview stays clean). Track page view plus a few world events: name-letters scattered, project card opened (which one), contact sent.
+- **Domains at cutover:** `dylanlandman.com` points to the Vercel project. Old `digitalportfolio` repo (GitHub Pages) gets its CNAME changed to `2020.dylanlandman.com`. Until cutover, preview on the default `*.vercel.app` URL.
 
 ## Error Handling & Edge Cases
 
@@ -82,7 +88,7 @@ Scattered across the map; findable by wandering. A small hand-drawn compass/lege
 
 - Manual playtest checklist per feature (movement feel, fling in both paths, every card opens/closes, EmailJS send works, mobile touch path, reduced-motion mode).
 - Devtools throttled-CPU pass for the performance floor.
-- No test framework — matches the no-build vanilla setup.
+- `tsc --noEmit` type-checking is the automated safety net (typed config catches content mistakes at compile time). No unit-test framework at launch; can add Vitest later if engine logic grows.
 
 ## Success Criteria
 
