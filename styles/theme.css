@@ -1,0 +1,69 @@
+:root {
+  --ink: #201a17;
+  --paper: #f5ecd6;
+  --card: #fefaf0;
+  --orange: #f47b28;
+  --coral: #f0563e;
+  --sky: #5aa0db;
+  --purple: #a98fd0;
+  --lime: #b7ce3c;
+  --pink: #ff7fa5;
+  --teal: #2fb0a3;
+  --border: 3px solid var(--ink);
+  --shadow: 6px 6px 0 var(--ink);
+  --shadow-sm: 4px 4px 0 var(--ink);
+  --font-display: 'Fredoka', 'Segoe UI', sans-serif;
+  --font-body: 'Nunito', 'Segoe UI', sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#cards-root { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+
+#recruiter-link {
+  position: fixed;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 20;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink);
+  background: var(--card);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-sm);
+  padding: 0.25rem 0.6rem;
+  text-decoration: none;
+}
+#recruiter-link:hover { transform: translate(1px, 1px); box-shadow: 3px 3px 0 var(--ink); }
+
+.noscript-card {
+  max-width: 32rem;
+  margin: 4rem auto;
+  background: var(--card);
+  border: var(--border);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  font-family: var(--font-body);
+}
+.noscript-card h1 { font-family: var(--font-display); margin-bottom: 0.5rem; }
