@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>sprite viewer</title>
+<style>body{background:#f5ecd6;display:flex;flex-wrap:wrap;gap:20px;padding:20px;font-family:monospace}</style>
+</head><body>
+<script type="module">
+import { dylanSprites } from '/src/config/sprites/dylan.ts'
+import { drawFrame, getFrame } from '/src/engine/sprites.ts'
+const dirs = ['S','SW','W','NW','N','NE','E','SE']
+const actions = ['idle','walk','jump','skid']
+for (const dir of dirs) for (const action of actions) {
+  const wrap = document.createElement('div')
+  wrap.innerHTML = `<p>${dir} ${action}</p>`
+  const c = document.createElement('canvas')
+  c.width = 16 * 6; c.height = 24 * 6
+  const ctx = c.getContext('2d')
+  let i = 0
+  setInterval(() => {
+    ctx.clearRect(0, 0, c.width, c.height)
+    const { frame, flip } = getFrame(dylanSprites, dir, action, i++)
+    drawFrame(ctx, dylanSprites, frame, c.width / 2, c.height, 6, flip)
+  }, 180)
+  wrap.appendChild(c)
+  document.body.appendChild(wrap)
+}
+</script>
+</body></html>
