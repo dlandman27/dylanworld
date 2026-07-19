@@ -169,11 +169,18 @@ export function drawProps(ctx: CanvasRenderingContext2D, props: Prop[], cam: Cam
     ctx.rotate(p.rotation)
     const spec = PROP_SPECS[p.kind]
     if (p.kind === 'letter' && p.char) {
+      // rsotw ".pop" treatment: hard ink drop-shadow, orange fill, ink outline
       ctx.font = `700 64px ${theme.fonts.display}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillStyle = theme.colors.ink
+      ctx.fillText(p.char, 3, 3) // hard offset shadow (matches text-shadow: 3px 3px 0 ink)
+      ctx.fillStyle = theme.colors.orange
       ctx.fillText(p.char, 0, 0)
+      ctx.lineWidth = 3 // ~1.5px CSS stroke, scaled for 64px glyphs
+      ctx.lineJoin = 'round'
+      ctx.strokeStyle = theme.colors.ink
+      ctx.strokeText(p.char, 0, 0)
     } else if (p.kind === 'duck') {
       // body + head + beak, paper style
       ctx.fillStyle = spec.color
