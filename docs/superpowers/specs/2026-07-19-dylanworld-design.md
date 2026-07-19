@@ -66,7 +66,8 @@ Scattered across the map; findable by wandering. A small hand-drawn compass/lege
   - `src/config/story.ts` — story-trail stops
   - `src/config/theme.ts` — palette, fonts, shadow/outline tokens (rsotw values as defaults)
   - `src/config/tuning.ts` — game-feel constants (chase spring, friction, camera lag, scatter force)
-  - All config typed via interfaces in `src/config/types.ts`, so bad config fails at compile time.
+  - All config typed via interfaces in `src/types.ts`, so bad config fails at compile time.
+- **Types for everything:** a single `src/types.ts` module defines the interfaces for the whole codebase — config shapes (WorldConfig, ProjectEntry, StoryStop, Theme, Tuning, AnalyticsConfig), engine entities (PhysicsBody, Prop, Landmark, SpriteSheet, SpriteFrame, Direction, ActionName), and runtime state (CameraState, InputState, CardState). Engine modules import from it; nothing defines ad-hoc inline object shapes.
 - **Rendering split:** one `<canvas>` renders world + character + physics props (60fps target with hundreds of bodies). DOM overlays render only the popup paper cards, so text is selectable and the contact form is a real form.
 - **Engine modules (`src/engine/`):** `world.ts` (map + camera), `sprites.ts` (pixel-data spritesheets + renderer), `physics.ts` (bodies, collisions, fling), `cards.ts` (DOM card open/close), `input.ts` (mouse/touch).
 - **Mobile:** touch-drag leads Dylan; tap landmark to open; props fling by finger. No thumbstick.
