@@ -1,10 +1,12 @@
-import { createCamera, updateCameraPan, stepZoom, drawWorldBackground } from './engine/world'
+import { createCamera, updateCameraPan, stepZoom } from './engine/world'
 import { createInput, updateInputWorld } from './engine/input'
 import { createProps, updatePhysics, drawProps } from './engine/physics'
-import { createScenery, drawScenery, drawSkyShadows } from './engine/scenery'
-import { drawTown } from './engine/town'
+import { drawIsland } from './engine/island'
 import { initCursors } from './engine/cursor'
 import { initCursorShop } from './ui/cursorShop'
+// Terrain-shape pass: town square + foliage are parked until the coastline is right.
+// import { createScenery, drawScenery, drawSkyShadows } from './engine/scenery'
+// import { drawTown } from './engine/town'
 // Landmark "houses" are parked for now — we'll place the sites later.
 // import { createLandmarks, updateLandmarks, drawLandmarks } from './engine/landmarks'
 
@@ -22,7 +24,6 @@ resize()
 const camera = createCamera()
 const props = createProps()
 const input = createInput(canvas, camera, props)
-const scenery = createScenery()
 initCursors()      // custom hand-drawn cursor + trail/click fx
 initCursorShop()   // browse & equip cursors (prices 0 for now)
 let last = performance.now()
@@ -36,11 +37,8 @@ function frame(now: number): void {
   updateInputWorld(input, camera, canvas)     // world point under the cursor, post-pan
   updatePhysics(props, input, camera, dt)
 
-  drawWorldBackground(ctx, camera, canvas)
-  drawScenery(ctx, scenery, camera, canvas, now)
-  drawTown(ctx, camera, canvas, now)
+  drawIsland(ctx, camera, canvas, now)
   drawProps(ctx, props, camera, canvas)
-  drawSkyShadows(ctx, camera, canvas, now)
 
   requestAnimationFrame(frame)
 }

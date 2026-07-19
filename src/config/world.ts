@@ -1,9 +1,9 @@
 import type { WorldConfig } from '../types'
 
 export const world: WorldConfig = {
-  width: 3000,
-  height: 2000,
-  spawn: { x: 1500, y: 1000 },
+  width: 3840,
+  height: 3160,
+  spawn: { x: 1920, y: 1240 },
   name: "DYLAN'S WORLD",
   landmarks: [
     // Project District — north-east quarter

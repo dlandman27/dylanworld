@@ -41,7 +41,7 @@ export function createProps(): Prop[] {
   const words = world.name.split(' ')
   const letterGap = 84
   const rowH = 104
-  const firstRowY = world.spawn.y - 330
+  const firstRowY = world.spawn.y - 150
   words.forEach((word, wi) => {
     const chars = word.split('')
     const rowY = firstRowY + wi * rowH
