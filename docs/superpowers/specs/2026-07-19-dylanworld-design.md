@@ -17,6 +17,18 @@ Tone: fun-first, full rsotw energy. Recruiters get a small "just the resume" esc
 - Background is the rsotw paper color **`#f5ecd6`**, with the rsotw art language throughout: ink outlines (`#201a17`), hard offset shadows, warm palette (orange `#f47b28`, coral `#f0563e`, sky `#5aa0db`, purple `#a98fd0`, lime `#b7ce3c`, pink `#ff7fa5`, teal `#2fb0a3`), Fredoka/Nunito/Space Mono type.
 - World art (buildings, trees, paths, signs) is drawn in code — canvas vector shapes in the paper/ink style. No image assets except the character spritesheet data.
 
+### Typography & CSS
+
+Copied from rsotw's home page so the two sites feel like siblings:
+
+- **Fonts (Google Fonts):** Fredoka 500/600/700 (display — headings, card titles, buttons), Nunito 400/700/800 (body), Space Mono 400/700 (mono accents — labels, the recruiter link, stats).
+- **CSS custom properties in `styles/theme.css`, generated to match `src/config/theme.ts`:**
+  - `--ink: #201a17`, `--paper: #f5ecd6`, `--card: #fefaf0`
+  - accents: `--orange: #f47b28`, `--coral: #f0563e`, `--sky: #5aa0db`, `--purple: #a98fd0`, `--lime: #b7ce3c`, `--pink: #ff7fa5`, `--teal: #2fb0a3`
+  - `--border: 3px solid var(--ink)`, `--shadow: 6px 6px 0 var(--ink)`, `--shadow-sm: 4px 4px 0 var(--ink)`
+- **Style rules:** paper cards use `--card` background, ink border, hard offset shadow, slight random rotation (±1°) for the hand-placed feel; buttons depress into their shadow on click; no blue text-selection highlight on interactive surfaces (`user-select: none` on the canvas/UI chrome, but card text stays selectable).
+- Canvas drawing reads the same tokens from `src/config/theme.ts` so world art and DOM cards always match.
+
 ## Opening Scene
 
 - Visitor spawns dead-center of the world. **DYLAN LANDMAN** surrounds the spawn point in huge letters.
