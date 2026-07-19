@@ -24,8 +24,8 @@ export function updateCharacter(ch: CharacterState, input: InputState, dt: numbe
   const dy = input.world.y - b.pos.y
   const dist = Math.hypot(dx, dy)
 
-  // on touch, only chase while pressed; mouse always chases
-  const chasing = dist > tuning.stopRadius
+  // click-to-move: only chase the cursor while the pointer is held down
+  const chasing = input.down && dist > tuning.stopRadius
 
   if (chasing) {
     b.vel.x += (dx / dist) * tuning.chaseAccel * dt

@@ -14,6 +14,12 @@ const PROP_SPECS: Record<PropKind, { radius: number; mass: number; color: string
   cup:    { radius: 9,  mass: 0.4, color: theme.colors.sky },
 }
 
+// nicecursor-style title palette: each name letter cycles through these (rainbow sticker letters)
+const LETTER_PALETTE = [
+  theme.colors.coral, theme.colors.sky, theme.colors.lime, theme.colors.purple,
+  theme.colors.orange, theme.colors.pink, theme.colors.teal, '#f7c948',
+]
+
 let nextId = 1
 
 function makeProp(kind: PropKind, pos: Vec2, home?: Vec2, char?: string): Prop {
@@ -169,18 +175,21 @@ export function drawProps(ctx: CanvasRenderingContext2D, props: Prop[], cam: Cam
     ctx.rotate(p.rotation)
     const spec = PROP_SPECS[p.kind]
     if (p.kind === 'letter' && p.char) {
-      // rsotw ".pop" treatment: hard ink drop-shadow, orange fill, ink outline
-      ctx.font = `700 64px ${theme.fonts.display}`
+      // nicecursor-style title letters: per-letter rainbow color, heavy weight,
+      // thick ink outline + hard ink drop-shadow. Letters are created first in
+      // createProps (ids 1..N in name order), so id maps to the color cycle.
+      const fs = 64
+      ctx.font = `900 ${fs}px "Arial Black", ${theme.fonts.display}, Arial, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillStyle = theme.colors.ink
-      ctx.fillText(p.char, 3, 3) // hard offset shadow (matches text-shadow: 3px 3px 0 ink)
-      ctx.fillStyle = theme.colors.orange
-      ctx.fillText(p.char, 0, 0)
-      ctx.lineWidth = 3 // ~1.5px CSS stroke, scaled for 64px glyphs
       ctx.lineJoin = 'round'
+      ctx.fillStyle = theme.colors.ink
+      ctx.fillText(p.char, 4, 4) // hard offset shadow
+      ctx.lineWidth = Math.max(6, fs * 0.07) // thick ink outline
       ctx.strokeStyle = theme.colors.ink
       ctx.strokeText(p.char, 0, 0)
+      ctx.fillStyle = LETTER_PALETTE[(p.id - 1) % LETTER_PALETTE.length] // colored fill on top
+      ctx.fillText(p.char, 0, 0)
     } else if (p.kind === 'duck') {
       // body + head + beak, paper style
       ctx.fillStyle = spec.color
