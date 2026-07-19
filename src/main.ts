@@ -1,6 +1,7 @@
 import { createCamera, updateCamera, drawWorldBackground } from './engine/world'
 import { createInput, updateInputWorld } from './engine/input'
 import { createCharacter, updateCharacter, drawCharacter } from './engine/character'
+import { createProps, updatePhysics, drawProps } from './engine/physics'
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!
@@ -16,6 +17,7 @@ resize()
 const camera = createCamera()
 const input = createInput(canvas)
 const character = createCharacter()
+const props = createProps()
 let last = performance.now()
 
 function frame(now: number): void {
@@ -24,8 +26,10 @@ function frame(now: number): void {
 
   updateInputWorld(input, camera, canvas)
   updateCharacter(character, input, dt)
+  updatePhysics(props, character.body, input, camera, dt)
   updateCamera(camera, character.body.pos, dt)
   drawWorldBackground(ctx, camera, canvas)
+  drawProps(ctx, props, camera, canvas)
   drawCharacter(ctx, character, camera, canvas)
 
   requestAnimationFrame(frame)
