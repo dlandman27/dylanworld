@@ -135,6 +135,8 @@ export interface Tuning {
   propFriction: number
   restitution: number
   cameraLag: number
+  /** how fast the dragged paper glides to a stop after release (higher = stickier) */
+  paperFriction: number
   plowForce: number
   flingPower: number
   letterReturnDelay: number
@@ -149,13 +151,25 @@ export interface Tuning {
 export interface AnalyticsConfig { measurementId: string }
 
 // ---------- runtime state ----------
-export interface CameraState { pos: Vec2 }
+export interface CameraState {
+  pos: Vec2
+  vel: Vec2
+  zoom: number
+  /** zoom eases toward this each frame (fluid wheel/pinch) */
+  zoomTarget: number
+  /** screen point kept fixed while the zoom eases */
+  zoomFocus: Vec2
+}
 
 export interface InputState {
   screen: Vec2
   world: Vec2
   down: boolean
   grabbed: Prop | null
+  /** true while dragging empty paper (panning the sheet) */
+  panning: boolean
+  /** world point pinned under the cursor while panning */
+  panAnchor: Vec2
 }
 
 export interface CharacterState {

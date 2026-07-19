@@ -4,7 +4,7 @@ export const world: WorldConfig = {
   width: 3000,
   height: 2000,
   spawn: { x: 1500, y: 1000 },
-  name: 'DYLAN LANDMAN',
+  name: "DYLAN'S WORLD",
   landmarks: [
     // Project District — north-east quarter
     { id: 'lm-rsotw', kind: 'project', x: 2150, y: 450, w: 220, h: 170, label: 'Random Sites Arcade', color: 'orange', cardId: 'rsotw' },

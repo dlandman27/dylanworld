@@ -1,8 +1,12 @@
-import { createCamera, updateCamera, drawWorldBackground } from './engine/world'
+import { createCamera, updateCameraPan, stepZoom, drawWorldBackground } from './engine/world'
 import { createInput, updateInputWorld } from './engine/input'
-import { createCharacter, updateCharacter, drawCharacter } from './engine/character'
 import { createProps, updatePhysics, drawProps } from './engine/physics'
-import { createLandmarks, updateLandmarks, drawLandmarks } from './engine/landmarks'
+import { createScenery, drawScenery, drawSkyShadows } from './engine/scenery'
+import { drawTown } from './engine/town'
+import { initCursors } from './engine/cursor'
+import { initCursorShop } from './ui/cursorShop'
+// Landmark "houses" are parked for now — we'll place the sites later.
+// import { createLandmarks, updateLandmarks, drawLandmarks } from './engine/landmarks'
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!
@@ -16,25 +20,27 @@ window.addEventListener('resize', resize)
 resize()
 
 const camera = createCamera()
-const input = createInput(canvas)
-const character = createCharacter()
 const props = createProps()
-const landmarks = createLandmarks()
+const input = createInput(canvas, camera, props)
+const scenery = createScenery()
+initCursors()      // custom hand-drawn cursor + trail/click fx
+initCursorShop()   // browse & equip cursors (prices 0 for now)
 let last = performance.now()
 
 function frame(now: number): void {
   const dt = Math.min((now - last) / 1000, 1 / 20) // clamp long tab-away frames
   last = now
 
-  updateInputWorld(input, camera, canvas)
-  updateCharacter(character, input, dt)
-  updatePhysics(props, character.body, input, camera, dt)
-  updateLandmarks(landmarks, character.body, dt)
-  updateCamera(camera, character.body.pos, dt)
+  stepZoom(camera, canvas, dt)               // ease zoom toward its target
+  updateCameraPan(camera, input, canvas, dt) // cursor drags/glides the paper
+  updateInputWorld(input, camera, canvas)     // world point under the cursor, post-pan
+  updatePhysics(props, input, camera, dt)
+
   drawWorldBackground(ctx, camera, canvas)
-  drawLandmarks(ctx, landmarks, camera, canvas, character.body.pos)
+  drawScenery(ctx, scenery, camera, canvas, now)
+  drawTown(ctx, camera, canvas, now)
   drawProps(ctx, props, camera, canvas)
-  drawCharacter(ctx, character, camera, canvas)
+  drawSkyShadows(ctx, camera, canvas, now)
 
   requestAnimationFrame(frame)
 }

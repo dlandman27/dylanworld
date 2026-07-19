@@ -1,4 +1,4 @@
-import type { CameraState, Landmark, PhysicsBody, Vec2 } from '../types'
+import type { CameraState, Landmark, Vec2 } from '../types'
 import { theme } from '../config/theme'
 import { world } from '../config/world'
 import { worldToScreen } from './world'
@@ -16,28 +16,13 @@ export function landmarkNear(lms: Landmark[], pos: Vec2, range: number): Landmar
   return null
 }
 
-export function updateLandmarks(lms: Landmark[], character: PhysicsBody, dt: number): void {
+export function updateLandmarks(lms: Landmark[], cursor: Vec2, dt: number): void {
   for (const lm of lms) {
     lm.wobble = Math.max(0, lm.wobble - dt * 2.2)
-    // solid AABB: push the character out, trigger wobble on contact
-    const left = lm.x - lm.w / 2, right = lm.x + lm.w / 2
-    const top = lm.y - lm.h / 2, bottom = lm.y + lm.h / 2
-    const cx = Math.min(Math.max(character.pos.x, left), right)
-    const cy = Math.min(Math.max(character.pos.y, top), bottom)
-    const dx = character.pos.x - cx
-    const dy = character.pos.y - cy
-    const d = Math.hypot(dx, dy)
-    if (d < character.radius) {
-      const speed = Math.hypot(character.vel.x, character.vel.y)
-      if (speed > 120) lm.wobble = 1
-      if (d > 0) {
-        const push = character.radius - d
-        character.pos.x += (dx / d) * push
-        character.pos.y += (dy / d) * push
-      } else {
-        character.pos.y = bottom + character.radius
-      }
-    }
+    // wobble to life when the cursor (your hand) hovers over the sticker
+    const cx = Math.min(Math.max(cursor.x, lm.x - lm.w / 2), lm.x + lm.w / 2)
+    const cy = Math.min(Math.max(cursor.y, lm.y - lm.h / 2), lm.y + lm.h / 2)
+    if (Math.hypot(cursor.x - cx, cursor.y - cy) < 24) lm.wobble = 1
   }
 }
 
@@ -62,7 +47,7 @@ function chunkyRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numb
   }
 }
 
-export function drawLandmarks(ctx: CanvasRenderingContext2D, lms: Landmark[], cam: CameraState, canvas: HTMLCanvasElement, characterPos: Vec2): void {
+export function drawLandmarks(ctx: CanvasRenderingContext2D, lms: Landmark[], cam: CameraState, canvas: HTMLCanvasElement, cursorPos: Vec2): void {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   for (const lm of lms) {
     const s = worldToScreen(cam, canvas, { x: lm.x, y: lm.y })
@@ -70,6 +55,7 @@ export function drawLandmarks(ctx: CanvasRenderingContext2D, lms: Landmark[], ca
     const wob = reduce ? 0 : Math.sin(performance.now() / 60) * lm.wobble * 0.06
     ctx.save()
     ctx.translate(s.x, s.y)
+    ctx.scale(cam.zoom, cam.zoom)
     // rsotw: base sticker tilt + dynamic wobble on top
     ctx.rotate(stickerTilt(lm.id) + wob)
     ctx.scale(1 + lm.wobble * 0.04, 1 - lm.wobble * 0.04)
@@ -111,9 +97,9 @@ export function drawLandmarks(ctx: CanvasRenderingContext2D, lms: Landmark[], ca
     ctx.fillText(lm.label, 0, lm.kind === 'decor' ? 0 : h / 2 + (lm.kind === 'story' ? 40 : 18))
     // proximity "!" hint — rsotw: gentle bob so it feels alive
     if (lm.cardId) {
-      const cx = Math.min(Math.max(characterPos.x, lm.x - w / 2), lm.x + w / 2)
-      const cy = Math.min(Math.max(characterPos.y, lm.y - h / 2), lm.y + h / 2)
-      if (Math.hypot(characterPos.x - cx, characterPos.y - cy) < 90) {
+      const cx = Math.min(Math.max(cursorPos.x, lm.x - w / 2), lm.x + w / 2)
+      const cy = Math.min(Math.max(cursorPos.y, lm.y - h / 2), lm.y + h / 2)
+      if (Math.hypot(cursorPos.x - cx, cursorPos.y - cy) < 90) {
         const bob = reduce ? 0 : Math.sin(performance.now() / 180) * 4
         ctx.font = `700 28px ${theme.fonts.display}`
         ctx.fillStyle = theme.colors.coral
