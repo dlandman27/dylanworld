@@ -1,6 +1,6 @@
-import { createCamera, updateCamera, drawWorldBackground, worldToScreen } from './engine/world'
-import { world } from './config/world'
+import { createCamera, updateCamera, drawWorldBackground } from './engine/world'
 import { createInput, updateInputWorld } from './engine/input'
+import { createCharacter, updateCharacter, drawCharacter } from './engine/character'
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!
@@ -15,6 +15,7 @@ resize()
 
 const camera = createCamera()
 const input = createInput(canvas)
+const character = createCharacter()
 let last = performance.now()
 
 function frame(now: number): void {
@@ -22,12 +23,10 @@ function frame(now: number): void {
   last = now
 
   updateInputWorld(input, camera, canvas)
-  updateCamera(camera, world.spawn, dt)
+  updateCharacter(character, input, dt)
+  updateCamera(camera, character.body.pos, dt)
   drawWorldBackground(ctx, camera, canvas)
-
-  const p = worldToScreen(camera, canvas, input.world)
-  ctx.fillStyle = '#201a17'
-  ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill()
+  drawCharacter(ctx, character, camera, canvas)
 
   requestAnimationFrame(frame)
 }
