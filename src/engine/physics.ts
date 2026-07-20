@@ -65,6 +65,22 @@ export function createProps(): Prop[] {
 interface Impact { x: number; y: number; age: number; max: number; size: number; seed: number }
 const impacts: Impact[] = []
 
+// ---- obstacles: solid shapes registered by game modules (e.g. the ABC blocks)
+// that props bounce off. Games call registerObstacleProvider once; the provider
+// runs each frame so positions stay live.
+export interface Obstacle {
+  x: number
+  y: number
+  /** half-size of the (axis-aligned) solid square */
+  half: number
+  /** called when a prop smacks it — lets the owner nudge/react */
+  onHit?: (ix: number, iy: number) => void
+}
+const obstacleProviders: Array<() => Obstacle[]> = []
+export function registerObstacleProvider(fn: () => Obstacle[]): void {
+  obstacleProviders.push(fn)
+}
+
 /** Impact feedback (comic spark + clunk) — shared with game modules. */
 export function spark(x: number, y: number, strength: number): void {
   impacts.push({ x, y, age: 0, max: 0.28, size: 8 + strength * 16, seed: Math.random() * Math.PI * 2 })
@@ -154,6 +170,33 @@ export function updatePhysics(props: Prop[], input: InputState, cam: CameraState
       p.vel.y *= -tuning.restitution
     }
     p.rotation += p.angVel * dt
+
+    // bounce off registered obstacles (blocks etc.) — closest point on the
+    // square to the prop centre, push out along the normal, reflect velocity
+    for (const provider of obstacleProviders) {
+      for (const o of provider()) {
+        const cx = Math.min(Math.max(p.pos.x, o.x - o.half), o.x + o.half)
+        const cy = Math.min(Math.max(p.pos.y, o.y - o.half), o.y + o.half)
+        let dx = p.pos.x - cx
+        let dy = p.pos.y - cy
+        let d = Math.hypot(dx, dy)
+        if (d >= p.radius) continue
+        if (d === 0) { dx = p.pos.x - o.x; dy = p.pos.y - o.y; d = Math.hypot(dx, dy) || 1 }
+        const nx = dx / d, ny = dy / d
+        p.pos.x = cx + nx * p.radius
+        p.pos.y = cy + ny * p.radius
+        const along = p.vel.x * nx + p.vel.y * ny
+        if (along < 0) {
+          p.vel.x -= (1 + 0.65) * along * nx
+          p.vel.y -= (1 + 0.65) * along * ny
+          if (-along > 130) {
+            spark(cx, cy, Math.min(1, -along / 900))
+            o.onHit?.(-nx * -along, -ny * -along)
+          }
+        }
+      }
+    }
+
     const speed = Math.hypot(p.vel.x, p.vel.y)
     p.restTime = speed < 8 ? p.restTime + dt : 0
   }

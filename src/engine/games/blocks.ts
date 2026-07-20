@@ -1,6 +1,6 @@
 import { theme } from '../../config/theme'
 import { world } from '../../config/world'
-import { spark } from '../physics'
+import { spark, registerObstacleProvider } from '../physics'
 import type { Ctx, TableGame } from './shared'
 import { INK, roundRect } from './shared'
 
@@ -70,6 +70,21 @@ export function createBlocks(): TableGame {
 
   let held: Block | null = null
   let target = { x: 0, y: 0 }
+
+  // marbles (and other props) bounce off grounded blocks; a lifted or flying
+  // block lets them roll underneath. Hits nudge the block a little.
+  registerObstacleProvider(() =>
+    blocks
+      .filter(b => b.z < 20 && !b.grabbed && b.dropDelay <= 0)
+      .map(b => ({
+        x: b.x, y: b.y, half: SZ / 2,
+        onHit: (ix: number, iy: number) => {
+          b.vx += ix * 0.12
+          b.vy += iy * 0.12
+          b.rest = 0
+        },
+      })),
+  )
 
   /**
    * Highest SOLID surface under this block (0 = the table). Solid needs most of
