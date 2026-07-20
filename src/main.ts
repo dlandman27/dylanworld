@@ -8,6 +8,9 @@ import { bindLens } from './engine/games/magnifier'
 import { initCursors } from './engine/cursor'
 import { initCursorShop } from './ui/cursorShop'
 import { initAudio } from './engine/audio'
+import { initNet, sendCursor } from './engine/net'
+import { drawPeerCursors } from './ui/peerCursors'
+import { initTableHost } from './ui/tableHost'
 // Parked experiments (island map, scenery, town square):
 // import { drawIsland } from './engine/island'
 // Landmark "houses" are parked for now — we'll place the sites later.
@@ -31,6 +34,8 @@ const input = createInput(canvas, camera, props, games)
 initCursors()      // custom hand-drawn cursor + trail/click fx
 initCursorShop()   // browse & equip cursors (prices 0 for now)
 initAudio()        // clunks arm on the first pointer press
+initNet()          // joins ?room=XXXX if present
+initTableHost()    // "host a table" chip
 let last = performance.now()
 
 /**
@@ -67,11 +72,13 @@ function frame(now: number): void {
   stepZoom(camera, canvas, dt)               // ease zoom toward its target
   updateCameraPan(camera, input, canvas, dt) // cursor drags/glides the table
   updateInputWorld(input, camera, canvas)     // world point under the cursor, post-pan
+  sendCursor(input.world.x, input.world.y)
   updatePhysics(props, input, camera, dt)
   for (const g of games) g.update(dt, now)
 
   renderWorld(camera, now)
   drawImpacts(ctx, camera, canvas)
+  drawPeerCursors(ctx, camera, canvas)
 
   requestAnimationFrame(frame)
 }
