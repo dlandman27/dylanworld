@@ -7,8 +7,9 @@ export const MIN_ZOOM = 0.45
 export const MAX_ZOOM = 2.6
 
 export function createCamera(): CameraState {
+  // open on the title blocks (they sit above spawn), not the bare spawn point
   return {
-    pos: { x: world.spawn.x, y: world.spawn.y },
+    pos: { x: world.spawn.x, y: world.spawn.y - 460 },
     vel: { x: 0, y: 0 },
     zoom: 1, zoomTarget: 1, zoomFocus: { x: 0, y: 0 },
   }

@@ -1,13 +1,15 @@
 import type { CameraState, InputState, Prop, Vec2 } from '../types'
+import type { TableGame } from './games/shared'
 import { screenToWorld, zoomAt, requestZoom } from './world'
 
 /**
  * The cursor is the only agent in the world. At pointerdown we decide the
- * gesture once: grab a prop under the cursor (to fling) or drag the paper.
+ * gesture once, in priority order: a GAME under the cursor captures the pointer
+ * (chess drag, puck fling…); else a prop grabs; else drag the table to pan.
  * Wheel and two-finger pinch zoom, homing on the cursor / pinch midpoint.
- * `props` is the live array so the hit-test always sees current positions.
+ * `props`/`games` are live references so hit-tests always see current state.
  */
-export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: Prop[]): InputState {
+export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: Prop[], games: TableGame[]): InputState {
   const input: InputState = {
     screen: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
     world: { x: 0, y: 0 },
@@ -17,10 +19,22 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
     panAnchor: { x: 0, y: 0 },
   }
 
-  // active pointers, keyed by id — one = grab/pan, two = pinch-zoom
+  // active pointers, keyed by id — one = game/grab/pan, two = pinch-zoom
   const pointers = new Map<number, Vec2>()
   let pinchDist = 0
   let pinchMid: Vec2 = { x: 0, y: 0 }
+  // the game currently holding the pointer, plus cursor velocity for flicks
+  let activeGame: TableGame | null = null
+  let lastW: { x: number; y: number; t: number } | null = null
+  let velW = { x: 0, y: 0 }
+
+  const trackVel = (w: Vec2, ts: number): void => {
+    if (lastW) {
+      const dt = Math.max(1, ts - lastW.t) / 1000
+      velW = { x: (w.x - lastW.x) / dt * 0.5 + velW.x * 0.5, y: (w.y - lastW.y) / dt * 0.5 + velW.y * 0.5 }
+    }
+    lastW = { x: w.x, y: w.y, t: ts }
+  }
 
   const startPan = (sx: number, sy: number): void => {
     input.panning = true
@@ -35,8 +49,20 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
       const d = Math.hypot(p.pos.x - w.x, p.pos.y - w.y)
       if (d < p.radius + 14 && d < best) { best = d; hit = p }
     }
-    if (hit) { input.grabbed = hit; hit.grabbed = true; return true }
+    if (hit) {
+      input.grabbed = hit
+      hit.grabbed = true
+      // bring to the top of the pile so a lifted piece draws above the rest
+      const idx = props.indexOf(hit)
+      if (idx !== -1) { props.splice(idx, 1); props.push(hit) }
+      return true
+    }
     return false
+  }
+  const releaseGrab = (): void => {
+    if (!input.grabbed) return
+    input.grabbed.grabbed = false
+    input.grabbed = null
   }
   const twoPointers = (): [Vec2, Vec2] => {
     const it = pointers.values()
@@ -51,10 +77,19 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
     input.down = true
 
     if (pointers.size === 1) {
-      if (!grabAt(e.clientX, e.clientY)) startPan(e.clientX, e.clientY)
+      const w = screenToWorld(cam, canvas, { x: e.clientX, y: e.clientY })
+      lastW = { x: w.x, y: w.y, t: e.timeStamp }
+      velW = { x: 0, y: 0 }
+      // games claim the pointer first (topmost drawn = last in array)
+      activeGame = null
+      for (let i = games.length - 1; i >= 0; i--) {
+        if (games[i].onDown(w.x, w.y)) { activeGame = games[i]; break }
+      }
+      if (!activeGame && !grabAt(e.clientX, e.clientY)) startPan(e.clientX, e.clientY)
     } else if (pointers.size === 2) {
-      // second finger down: drop any grab/pan and begin a pinch
-      if (input.grabbed) { input.grabbed.grabbed = false; input.grabbed = null }
+      // second finger down: drop any game/grab/pan and begin a pinch
+      if (activeGame) { activeGame.onUp(lastW?.x ?? 0, lastW?.y ?? 0, 0, 0); activeGame = null }
+      releaseGrab()
       input.panning = false
       const [a, b] = twoPointers()
       pinchDist = Math.hypot(a.x - b.x, a.y - b.y)
@@ -80,21 +115,32 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
     }
     input.screen.x = e.clientX
     input.screen.y = e.clientY
+    if (activeGame) {
+      const w = screenToWorld(cam, canvas, { x: e.clientX, y: e.clientY })
+      trackVel(w, e.timeStamp)
+      activeGame.onMove(w.x, w.y)
+    }
   })
 
   const up = (e: PointerEvent): void => {
     pointers.delete(e.pointerId)
     if (pointers.size === 1) {
       // dropped from a pinch to one finger — hand back to a fresh paper drag
-      if (input.grabbed) { input.grabbed.grabbed = false; input.grabbed = null }
+      releaseGrab()
       const [only] = twoPointers()
       input.screen = { ...only }
       startPan(only.x, only.y)
     } else if (pointers.size === 0) {
       input.down = false
-      if (input.grabbed) { input.grabbed.grabbed = false; input.grabbed = null }
+      if (activeGame) {
+        const w = screenToWorld(cam, canvas, { x: e.clientX, y: e.clientY })
+        activeGame.onUp(w.x, w.y, velW.x, velW.y)
+        activeGame = null
+      }
+      releaseGrab()
       input.panning = false
       pinchDist = 0
+      lastW = null
     }
   }
   canvas.addEventListener('pointerup', up)

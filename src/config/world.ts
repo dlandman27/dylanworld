@@ -1,9 +1,9 @@
 import type { WorldConfig } from '../types'
 
 export const world: WorldConfig = {
-  width: 3840,
-  height: 3160,
-  spawn: { x: 1920, y: 1240 },
+  width: 5200,
+  height: 3600,
+  spawn: { x: 2600, y: 1800 },
   name: "DYLAN'S WORLD",
   landmarks: [
     // Project District — north-east quarter
@@ -32,12 +32,8 @@ export const world: WorldConfig = {
     { id: 'lm-welcome', kind: 'decor', x: 1500, y: 700, w: 160, h: 70, label: 'welcome to dylanworld', color: 'lime' },
   ],
   props: [
-    { kind: 'duck', x: 1100, y: 1300, count: 5, spread: 150 },
-    { kind: 'duck', x: 1900, y: 600, count: 3, spread: 120 },
-    { kind: 'pebble', x: 1500, y: 1000, count: 14, spread: 600 },
-    { kind: 'ball', x: 1350, y: 850, count: 1, spread: 0 },
-    { kind: 'cone', x: 2300, y: 950, count: 4, spread: 200 },
-    { kind: 'leaf', x: 800, y: 800, count: 10, spread: 400 },
-    { kind: 'cup', x: 650, y: 1080, count: 2, spread: 60 },
+    // marbles strewn across the table, grabbable/flingable
+    { kind: 'pebble', x: 2600, y: 1800, count: 30, spread: 2100 },
+    { kind: 'ball', x: 2000, y: 1200, count: 1, spread: 0 },
   ],
 }

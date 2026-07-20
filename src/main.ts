@@ -1,12 +1,13 @@
 import { createCamera, updateCameraPan, stepZoom } from './engine/world'
 import { createInput, updateInputWorld } from './engine/input'
-import { createProps, updatePhysics, drawProps } from './engine/physics'
-import { drawIsland } from './engine/island'
+import { createProps, updatePhysics, drawProps, drawImpacts } from './engine/physics'
+import { drawTable } from './engine/table'
+import { createGames } from './engine/games'
 import { initCursors } from './engine/cursor'
 import { initCursorShop } from './ui/cursorShop'
-// Terrain-shape pass: town square + foliage are parked until the coastline is right.
-// import { createScenery, drawScenery, drawSkyShadows } from './engine/scenery'
-// import { drawTown } from './engine/town'
+import { initAudio } from './engine/audio'
+// Parked experiments (island map, scenery, town square):
+// import { drawIsland } from './engine/island'
 // Landmark "houses" are parked for now — we'll place the sites later.
 // import { createLandmarks, updateLandmarks, drawLandmarks } from './engine/landmarks'
 
@@ -23,9 +24,11 @@ resize()
 
 const camera = createCamera()
 const props = createProps()
-const input = createInput(canvas, camera, props)
+const games = createGames()
+const input = createInput(canvas, camera, props, games)
 initCursors()      // custom hand-drawn cursor + trail/click fx
 initCursorShop()   // browse & equip cursors (prices 0 for now)
+initAudio()        // clunks arm on the first pointer press
 let last = performance.now()
 
 function frame(now: number): void {
@@ -33,12 +36,21 @@ function frame(now: number): void {
   last = now
 
   stepZoom(camera, canvas, dt)               // ease zoom toward its target
-  updateCameraPan(camera, input, canvas, dt) // cursor drags/glides the paper
+  updateCameraPan(camera, input, canvas, dt) // cursor drags/glides the table
   updateInputWorld(input, camera, canvas)     // world point under the cursor, post-pan
   updatePhysics(props, input, camera, dt)
+  for (const g of games) g.update(dt, now)
 
-  drawIsland(ctx, camera, canvas, now)
+  drawTable(ctx, camera, canvas, now)
+  // games render in world coordinates under one camera transform
+  ctx.save()
+  ctx.setTransform(camera.zoom, 0, 0, camera.zoom,
+    canvas.width / 2 - camera.pos.x * camera.zoom,
+    canvas.height / 2 - camera.pos.y * camera.zoom)
+  for (const g of games) g.draw(ctx, now)
+  ctx.restore()
   drawProps(ctx, props, camera, canvas)
+  drawImpacts(ctx, camera, canvas)
 
   requestAnimationFrame(frame)
 }

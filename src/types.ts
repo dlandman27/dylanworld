@@ -42,6 +42,8 @@ export interface Prop extends PhysicsBody {
   kind: PropKind
   rotation: number
   angVel: number
+  /** scrolling texture offset for rolling props (marbles) */
+  tex: Vec2
   grabbed: boolean
   /** for letters: where it drifts home to; undefined for free props */
   home?: Vec2
