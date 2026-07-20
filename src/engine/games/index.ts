@@ -7,6 +7,8 @@ import { createDice } from './dice'
 import { createSpinner } from './spinner'
 import { createTop, GOLD } from './top'
 import { createTeeth } from './teeth'
+import { createNotes } from './notes'
+import { createMagnifier } from './magnifier'
 import { createOverhead } from './overhead'
 import { createMail } from './mail'
 import type { MailGame } from './mail'
@@ -36,6 +38,8 @@ export function createGames(): TableGame[] {
     createTop(3550, 950),
     createTop(1500, 1700, GOLD),
     createTeeth(4250, 1900),
+    createNotes(2250, 2050),
+    createMagnifier(3000, 2350),
     // ambient cloud/bird shadows — draws only in drawAbove, so it shades every
     // game and prop; placed after the tops so shadows fall on standing pieces too
     createOverhead(),
