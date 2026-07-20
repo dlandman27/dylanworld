@@ -13,6 +13,9 @@ export default class Table implements Party.Server {
     } catch {
       return // garbage in, nothing out
     }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return // non-object payloads ignored
+    }
     parsed.id = sender.id
     this.room.broadcast(JSON.stringify(parsed), [sender.id])
   }
