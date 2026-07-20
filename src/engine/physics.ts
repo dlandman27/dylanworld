@@ -73,12 +73,20 @@ export interface Obstacle {
   y: number
   /** half-size of the (axis-aligned) solid square */
   half: number
-  /** called when a prop smacks it — lets the owner nudge/react */
+  /** identifies the registering object so it can skip colliding with itself */
+  owner?: unknown
+  /** called when something smacks it — lets the owner nudge/react */
   onHit?: (ix: number, iy: number) => void
 }
 const obstacleProviders: Array<() => Obstacle[]> = []
 export function registerObstacleProvider(fn: () => Obstacle[]): void {
   obstacleProviders.push(fn)
+}
+/** Live flattened obstacle list — for game pieces that roam (e.g. the top). */
+export function allObstacles(): Obstacle[] {
+  const out: Obstacle[] = []
+  for (const fn of obstacleProviders) out.push(...fn())
+  return out
 }
 
 /** Impact feedback (comic spark + clunk) — shared with game modules. */

@@ -50,6 +50,13 @@ function frame(now: number): void {
   for (const g of games) g.draw(ctx, now)
   ctx.restore()
   drawProps(ctx, props, camera, canvas)
+  // tall pieces (e.g. the standing top) render above the props layer
+  ctx.save()
+  ctx.setTransform(camera.zoom, 0, 0, camera.zoom,
+    canvas.width / 2 - camera.pos.x * camera.zoom,
+    canvas.height / 2 - camera.pos.y * camera.zoom)
+  for (const g of games) g.drawAbove?.(ctx, now)
+  ctx.restore()
   drawImpacts(ctx, camera, canvas)
 
   requestAnimationFrame(frame)

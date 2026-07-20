@@ -22,6 +22,8 @@ export interface TableGame {
   onUp(x: number, y: number, vx: number, vy: number): void
   update(dt: number, t: number): void
   draw(g: Ctx, t: number): void
+  /** optional second pass drawn ABOVE the props layer (tall standing pieces) */
+  drawAbove?(g: Ctx, t: number): void
 }
 
 export function roundRect(g: Ctx, x: number, y: number, w: number, h: number, r: number): void {
