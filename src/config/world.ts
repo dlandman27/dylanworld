@@ -21,7 +21,7 @@ export const world: WorldConfig = {
     // Story Trail — western path, roughly top to bottom
     { id: 'lm-bio', kind: 'story', x: 700, y: 400, w: 90, h: 110, label: 'Start Here', color: 'coral', cardId: 'bio' },
     { id: 'lm-umass', kind: 'story', x: 500, y: 700, w: 90, h: 110, label: 'UMass', color: 'coral', cardId: 'umass' },
-    { id: 'lm-hoboken', kind: 'story', x: 650, y: 1050, w: 90, h: 110, label: 'Hoboken', color: 'coral', cardId: 'hoboken' },
+    { id: 'lm-hoboken', kind: 'story', x: 650, y: 1050, w: 90, h: 110, label: 'Jersey City', color: 'coral', cardId: 'hoboken' },
     { id: 'lm-playbook-story', kind: 'story', x: 450, y: 1400, w: 90, h: 110, label: 'Work', color: 'coral', cardId: 'playbook' },
     { id: 'lm-skills', kind: 'story', x: 700, y: 1650, w: 90, h: 110, label: 'Toolbox', color: 'coral', cardId: 'skills' },
 

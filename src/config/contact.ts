@@ -2,7 +2,7 @@ import type { ContactConfig } from '../types'
 
 export const contact: ContactConfig = {
   email: 'dylandman287@gmail.com',
-  location: 'Hoboken, NJ',
+  location: 'Jersey City, NJ',
   socials: [
     { label: 'GitHub', url: 'https://github.com/dlandman27' },
     { label: 'LinkedIn', url: 'https://www.linkedin.com/in/dylan-landman' },

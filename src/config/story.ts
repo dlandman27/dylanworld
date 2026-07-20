@@ -14,7 +14,7 @@ export const story: StoryStop[] = [
   },
   {
     id: 'hoboken',
-    title: 'Hoboken, NJ',
+    title: 'Jersey City, NJ',
     body: 'Home base. Across the river from NYC, where the ducks are brave and the coffee is strong.',
   },
   {
