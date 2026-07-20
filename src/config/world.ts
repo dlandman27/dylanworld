@@ -35,5 +35,11 @@ export const world: WorldConfig = {
     // marbles strewn across the table, grabbable/flingable
     { kind: 'pebble', x: 2600, y: 1800, count: 30, spread: 2100 },
     { kind: 'ball', x: 2000, y: 1200, count: 1, spread: 0 },
+    // loose change: a spilled pocket near the cards + strays everywhere
+    { kind: 'coin', x: 3900, y: 1500, count: 7, spread: 260 },
+    { kind: 'coin', x: 2600, y: 1800, count: 8, spread: 2000 },
+    // poker chips by the cards — somebody's mid-hand
+    { kind: 'chip', x: 4150, y: 1350, count: 10, spread: 150 },
+    { kind: 'chip', x: 4520, y: 1330, count: 5, spread: 90 },
   ],
 }

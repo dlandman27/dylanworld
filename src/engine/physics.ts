@@ -15,7 +15,20 @@ const PROP_SPECS: Record<PropKind, { radius: number; mass: number; color: string
   cone:   { radius: 12, mass: 0.9, color: theme.colors.orange, fr: 1 },
   leaf:   { radius: 8,  mass: 0.15, color: theme.colors.lime, fr: 1 },
   cup:    { radius: 9,  mass: 0.4, color: theme.colors.sky, fr: 1 },
+  coin:   { radius: 14, mass: 0.45, color: '#e9c96c', fr: 0.7 },
+  chip:   { radius: 17, mass: 0.5, color: '#f0563e', fr: 0.85 },
 }
+
+/** coins + chips: the flat stackable discs share pick-up/stack behaviour */
+export const isDisc = (k: PropKind): boolean => k === 'coin' || k === 'chip'
+
+// casino chip colors, cycled by id
+const CHIP_COLORS = [
+  theme.colors.coral, theme.colors.sky, theme.colors.lime, '#3f3b46', '#fbfaf4',
+]
+
+const COIN_FLIP_DUR = 0.8 // seconds in the air
+const COIN_FLIP_SPINS = 5 // edge-over-edge turns per flip
 
 // glass marble palette, cycled by prop id
 const MARBLE_COLORS = [
@@ -31,7 +44,7 @@ function makeProp(kind: PropKind, pos: Vec2, home?: Vec2, char?: string): Prop {
     id: nextId++, kind, char, home,
     pos: { ...pos }, vel: { x: 0, y: 0 },
     radius: spec.radius, mass: spec.mass,
-    rotation: 0, angVel: 0, tex: { x: 0, y: 0 },
+    rotation: 0, angVel: 0, tex: { x: 0, y: 0 }, lift: 0,
     grabbed: false, sleeping: false, restTime: 99,
   }
 }
@@ -126,11 +139,19 @@ function collide(a: PhysicsBody, b: PhysicsBody): void {
 }
 
 export function updatePhysics(props: Prop[], input: InputState, cam: CameraState, dt: number): void {
-  // fling: the grabbed prop chases the cursor (grab/release is owned by input.ts)
+  // grabbed prop: coins are PICKED UP (ride the cursor exactly, airborne);
+  // everything else chases the cursor on the fling spring
   if (input.grabbed) {
     const g = input.grabbed
-    g.vel.x = (input.world.x - g.pos.x) * tuning.flingPower
-    g.vel.y = (input.world.y - g.pos.y) * tuning.flingPower
+    if (isDisc(g.kind)) {
+      g.pos.x = input.world.x
+      g.pos.y = input.world.y
+      g.vel.x = 0
+      g.vel.y = 0
+    } else {
+      g.vel.x = (input.world.x - g.pos.x) * tuning.flingPower
+      g.vel.y = (input.world.y - g.pos.y) * tuning.flingPower
+    }
     g.restTime = 0
     g.sleeping = false
   }
@@ -163,6 +184,20 @@ export function updatePhysics(props: Prop[], input: InputState, cam: CameraState
     if (p.kind === 'pebble') {
       p.tex.x += p.vel.x * dt * 0.5
       p.tex.y += p.vel.y * dt * 0.5
+    }
+    // discs (coins/chips): lift while carried, spin as they slide;
+    // tex.x > 0 = mid coin-flip (timer), tex.y = fate (coins only)
+    if (isDisc(p.kind)) {
+      p.lift += ((p.grabbed ? 1 : 0) - p.lift) * Math.min(1, dt * 14)
+      const sp = Math.hypot(p.vel.x, p.vel.y)
+      p.rotation += sp * dt * 0.02 * (p.id % 2 === 0 ? 1 : -1)
+      if (p.tex.x > 0) {
+        p.tex.x += dt
+        if (p.tex.x >= COIN_FLIP_DUR) {
+          p.tex.x = 0
+          spark(p.pos.x, p.pos.y, 0.16) // the landing clink
+        }
+      }
     }
     // integrate + bounce off the table rim (with a clunk when it's a real knock)
     p.pos.x += p.vel.x * dt
@@ -216,6 +251,10 @@ export function updatePhysics(props: Prop[], input: InputState, cam: CameraState
     for (let j = i + 1; j < props.length; j++) {
       const b = props[j]
       if (b.sleeping) continue
+      // discs (coins/chips) never collide with each other — they slide over and STACK
+      if (isDisc(a.kind) && isDisc(b.kind)) continue
+      // a picked-up disc is airborne — carried over everything, shoving nothing
+      if ((a.grabbed && isDisc(a.kind)) || (b.grabbed && isDisc(b.kind))) continue
       // held marbles still collide — swing one through the pile and it scatters
       collide(a, b)
     }
@@ -416,6 +455,183 @@ export function drawProps(ctx: CanvasRenderingContext2D, props: Prop[], cam: Cam
       // fixed glint on top
       ctx.fillStyle = 'rgba(255,255,255,0.9)'
       ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.42, r * 0.24, r * 0.13, -0.6, 0, Math.PI * 2); ctx.fill()
+    } else if (p.kind === 'chip') {
+      // casino chip: colored body, white edge ticks. Face 0 = dashed-ring
+      // front, face 1 = solid-centre back, so a tap-flip visibly lands on
+      // "the other side". Tumbles with a colored side wall, like the coin.
+      const r = spec.radius
+      const col = CHIP_COLORS[(p.id - 1) % CHIP_COLORS.length]
+      const white = col === '#fbfaf4'
+      const flipT = p.tex.x > 0 ? p.tex.x / COIN_FLIP_DUR : 0
+      const inAir = flipT > 0
+      const hop = inAir ? Math.sin(Math.PI * flipT) : 0
+      const lift = p.lift
+      const away = Math.max(hop, lift)
+      ctx.fillStyle = `rgba(32,26,23,${0.2 - away * 0.08})`
+      ctx.beginPath()
+      ctx.ellipse(2 + lift * 8, 3 + lift * 12, r * (1 - away * 0.3), r * 0.9 * (1 - away * 0.3), 0, 0, Math.PI * 2)
+      ctx.fill()
+
+      const drawChipFace = (face: number): void => {
+        ctx.fillStyle = col
+        ctx.strokeStyle = theme.colors.ink
+        ctx.lineWidth = 2.4
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+        // edge ticks (white on colored chips, ink on the white chip)
+        ctx.fillStyle = white ? '#3f3b46' : '#fbfaf4'
+        for (let k = 0; k < 6; k++) {
+          const a = (k / 6) * Math.PI * 2 + Math.PI / 12
+          ctx.beginPath()
+          ctx.arc(0, 0, r - 1.2, a, a + Math.PI / 9)
+          ctx.arc(0, 0, r * 0.72, a + Math.PI / 9, a, true)
+          ctx.closePath()
+          ctx.fill()
+        }
+        const detail = white ? 'rgba(32,26,23,0.5)' : 'rgba(255,255,255,0.85)'
+        if (face === 0) {
+          // front: ring + dashed inner ring
+          ctx.strokeStyle = detail
+          ctx.lineWidth = 1.8
+          ctx.beginPath(); ctx.arc(0, 0, r * 0.68, 0, Math.PI * 2); ctx.stroke()
+          ctx.setLineDash([3, 3])
+          ctx.beginPath(); ctx.arc(0, 0, r * 0.52, 0, Math.PI * 2); ctx.stroke()
+          ctx.setLineDash([])
+        } else {
+          // back: solid centre disc
+          ctx.fillStyle = detail
+          ctx.beginPath(); ctx.arc(0, 0, r * 0.44, 0, Math.PI * 2); ctx.fill()
+        }
+        // glint
+        ctx.fillStyle = 'rgba(255,255,255,0.55)'
+        ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.4, r * 0.18, r * 0.09, -0.6, 0, Math.PI * 2); ctx.fill()
+      }
+
+      if (!inAir) {
+        if (lift > 0.01) ctx.scale(1 + lift * 0.16, 1 + lift * 0.16)
+        drawChipFace(p.tex.y)
+      } else {
+        ctx.save()
+        ctx.translate(0, -hop * 52)
+        const spin = Math.cos(Math.PI * 2 * COIN_FLIP_SPINS * flipT)
+        const squash = Math.max(0.06, Math.abs(spin))
+        const ry = r * squash
+        const TH = r * 0.5 * Math.sqrt(1 - spin * spin) // chips are chunky
+        const face = spin >= 0 ? 0 : 1
+        // side wall: chip color in shadow
+        ctx.fillStyle = col
+        ctx.strokeStyle = theme.colors.ink
+        ctx.lineWidth = 2.2
+        ctx.beginPath(); ctx.ellipse(0, TH / 2, r, ry, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+        ctx.fillRect(-r, -TH / 2, r * 2, TH)
+        ctx.fillStyle = 'rgba(32,26,23,0.3)'
+        ctx.beginPath(); ctx.ellipse(0, TH / 2, r, ry, 0, 0, Math.PI * 2); ctx.fill()
+        ctx.fillRect(-r, -TH / 2, r * 2, TH)
+        ctx.strokeStyle = theme.colors.ink
+        ctx.beginPath(); ctx.moveTo(-r, -TH / 2); ctx.lineTo(-r, TH / 2); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(r, -TH / 2); ctx.lineTo(r, TH / 2); ctx.stroke()
+        // white tick bands wrap the side
+        ctx.fillStyle = '#fbfaf4'
+        for (let k = -2; k <= 2; k += 2) {
+          const gx = (k / 3) * r
+          ctx.fillRect(gx - r * 0.12, -TH / 2, r * 0.24, TH)
+        }
+        // top face, squashed, riding above the side
+        ctx.translate(0, -TH / 2)
+        ctx.scale(1, squash)
+        drawChipFace(face)
+        ctx.restore()
+      }
+    } else if (p.kind === 'coin') {
+      // a gold coin. At rest it shows its face (tex.y: 0 = star heads, 1 = 'D'
+      // tails). Mid-flip (tex.x > 0) it leaps, spins edge-over-edge (vertical
+      // squash), and the shown face alternates until it lands.
+      const r = spec.radius
+      const flipT = p.tex.x > 0 ? p.tex.x / COIN_FLIP_DUR : 0
+      const inAir = flipT > 0
+      const hop = inAir ? Math.sin(Math.PI * flipT) : 0
+      const lift = p.lift
+      // shadow stays on the table — drops away when flipped OR picked up
+      const away = Math.max(hop, lift)
+      ctx.fillStyle = `rgba(32,26,23,${0.2 - away * 0.08})`
+      ctx.beginPath()
+      ctx.ellipse(2 + lift * 8, 3 + lift * 12, r * (1 - away * 0.3), r * 0.9 * (1 - away * 0.3), 0, 0, Math.PI * 2)
+      ctx.fill()
+      if (lift > 0.01) ctx.scale(1 + lift * 0.16, 1 + lift * 0.16)
+
+      // face details in flat (unsquashed) coin space, radius r
+      const drawFace = (face: number): void => {
+        ctx.fillStyle = '#e9c96c'
+        ctx.strokeStyle = theme.colors.ink
+        ctx.lineWidth = 2.2
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+        ctx.strokeStyle = '#c7a23f'
+        ctx.lineWidth = 2
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2); ctx.stroke()
+        // milled edge ticks
+        ctx.strokeStyle = 'rgba(32,26,23,0.4)'
+        ctx.lineWidth = 1.4
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2
+          ctx.beginPath()
+          ctx.moveTo(Math.cos(a) * r * 0.85, Math.sin(a) * r * 0.85)
+          ctx.lineTo(Math.cos(a) * r * 0.98, Math.sin(a) * r * 0.98)
+          ctx.stroke()
+        }
+        if (face === 0) {
+          // heads: embossed star
+          ctx.fillStyle = '#c7a23f'
+          ctx.beginPath()
+          for (let k = 0; k < 10; k++) {
+            const rr = k % 2 === 0 ? r * 0.42 : r * 0.18
+            const a = -Math.PI / 2 + (Math.PI * k) / 5
+            k === 0 ? ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr)
+          }
+          ctx.closePath(); ctx.fill()
+        } else {
+          // tails: embossed D
+          ctx.fillStyle = '#c7a23f'
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+          ctx.font = `800 ${Math.round(r * 0.95)}px ${theme.fonts.display}, Arial, sans-serif`
+          ctx.fillText('D', 0, r * 0.05)
+        }
+        // glint
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'
+        ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.4, r * 0.18, r * 0.1, -0.6, 0, Math.PI * 2); ctx.fill()
+      }
+
+      if (!inAir) {
+        drawFace(p.tex.y)
+      } else {
+        // edge-over-edge tumble WITH thickness: as the face squashes toward
+        // edge-on, the coin's dark cylindrical side fills the gap
+        ctx.save()
+        ctx.translate(0, -hop * 52)
+        const spin = Math.cos(Math.PI * 2 * COIN_FLIP_SPINS * flipT)
+        const squash = Math.max(0.06, Math.abs(spin))
+        const ry = r * squash
+        const TH = r * 0.42 * Math.sqrt(1 - spin * spin) // visible side height
+        const face = spin >= 0 ? 0 : 1
+        // side wall: lower ellipse + connecting band, in darker gold
+        ctx.fillStyle = '#b08a2e'
+        ctx.strokeStyle = theme.colors.ink
+        ctx.lineWidth = 2.2
+        ctx.beginPath(); ctx.ellipse(0, TH / 2, r, ry, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+        ctx.fillRect(-r, -TH / 2, r * 2, TH)
+        ctx.beginPath(); ctx.moveTo(-r, -TH / 2); ctx.lineTo(-r, TH / 2); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(r, -TH / 2); ctx.lineTo(r, TH / 2); ctx.stroke()
+        // ridges on the side, like a milled coin edge
+        ctx.strokeStyle = 'rgba(32,26,23,0.35)'
+        ctx.lineWidth = 1.3
+        for (let k = -3; k <= 3; k++) {
+          const gx = (k / 3.6) * r
+          ctx.beginPath(); ctx.moveTo(gx, -TH / 2); ctx.lineTo(gx, TH / 2); ctx.stroke()
+        }
+        // top face, squashed, riding above the side
+        ctx.translate(0, -TH / 2)
+        ctx.scale(1, squash)
+        drawFace(face)
+        ctx.restore()
+      }
     } else {
       // circle-ish props: ball, leaf, cup
       ctx.fillStyle = spec.color

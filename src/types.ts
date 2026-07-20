@@ -27,7 +27,7 @@ export interface CharacterSprites {
 }
 
 // ---------- physics ----------
-export type PropKind = 'letter' | 'duck' | 'pebble' | 'ball' | 'cone' | 'leaf' | 'cup'
+export type PropKind = 'letter' | 'duck' | 'pebble' | 'ball' | 'cone' | 'leaf' | 'cup' | 'coin' | 'chip'
 
 export interface PhysicsBody {
   pos: Vec2
@@ -44,6 +44,8 @@ export interface Prop extends PhysicsBody {
   angVel: number
   /** scrolling texture offset for rolling props (marbles) */
   tex: Vec2
+  /** 0..1 picked-up-off-the-table amount (eases while grabbed) */
+  lift: number
   grabbed: boolean
   /** for letters: where it drifts home to; undefined for free props */
   home?: Vec2

@@ -41,6 +41,7 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
     input.panAnchor = screenToWorld(cam, canvas, { x: sx, y: sy })
     cam.vel.x = 0; cam.vel.y = 0
   }
+  let grabStart: { x: number; y: number; t: number } | null = null
   const grabAt = (sx: number, sy: number): boolean => {
     const w = screenToWorld(cam, canvas, { x: sx, y: sy })
     let hit: Prop | null = null
@@ -52,6 +53,7 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
     if (hit) {
       input.grabbed = hit
       hit.grabbed = true
+      grabStart = { x: sx, y: sy, t: performance.now() }
       // bring to the top of the pile so a lifted piece draws above the rest
       const idx = props.indexOf(hit)
       if (idx !== -1) { props.splice(idx, 1); props.push(hit) }
@@ -60,8 +62,36 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
     return false
   }
   const releaseGrab = (): void => {
-    if (!input.grabbed) return
-    input.grabbed.grabbed = false
+    const g = input.grabbed
+    if (!g) return
+    const disc = g.kind === 'coin' || g.kind === 'chip'
+    if (disc && grabStart) {
+      const moved = Math.hypot(input.screen.x - grabStart.x, input.screen.y - grabStart.y)
+      if (moved < 8 && performance.now() - grabStart.t < 350 && g.tex.x === 0) {
+        // a clean TAP (no drag) flips it — coins land on fate, chips just tumble
+        g.tex.x = 0.0001                       // flip timer starts
+        g.tex.y = Math.random() < 0.5 ? 0 : 1  // heads/tails (or chip front/back)
+        g.vel.x = 0
+        g.vel.y = 0
+      } else if (moved >= 8) {
+        // a carried disc sets down gently — onto a STACK when over another disc
+        // (coins and chips share towers). Align to the column's BOTTOM disc and
+        // sit on top, one sliver (3.2px) higher per disc already there.
+        g.vel.x = 0
+        g.vel.y = 0
+        const column = props.filter(p =>
+          p !== g && (p.kind === 'coin' || p.kind === 'chip') &&
+          Math.abs(p.pos.x - g.pos.x) < g.radius &&
+          Math.abs(p.pos.y - g.pos.y) < g.radius + 50)
+        if (column.length > 0) {
+          const bottom = column.reduce((a, b) => (b.pos.y > a.pos.y ? b : a))
+          g.pos.x = bottom.pos.x
+          g.pos.y = bottom.pos.y - 3.2 * column.length
+        }
+      }
+    }
+    grabStart = null
+    g.grabbed = false
     input.grabbed = null
   }
   const twoPointers = (): [Vec2, Vec2] => {
