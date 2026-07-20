@@ -48,7 +48,8 @@ export function initTableHost(): void {
       const label = performance.now() < flashUntil
         ? '<span class="flash">link copied</span>'
         : `${n} at the table`
-      btn.innerHTML = `<span class="code">${roomCode() ?? ''}</span> ${label}`
+      const safeCode = (roomCode() ?? '').replace(/[^A-Z0-9]/gi, '')
+      btn.innerHTML = `<span class="code">${safeCode}</span> ${label}`
       btn.title = `you are "${myName()}" — click to copy the invite link`
     }
     setTimeout(render, 500)

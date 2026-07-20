@@ -60,7 +60,10 @@ function connect(code: string): void {
 
 export function initNet(): void {
   const code = new URLSearchParams(location.search).get('room')
-  if (code) connect(code.toUpperCase().slice(0, 8))
+  if (code) {
+    const sanitized = code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)
+    if (sanitized) connect(sanitized)
+  }
 }
 
 export function netConnected(): boolean {
