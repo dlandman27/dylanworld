@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dylanworld-party",
+  "main": "party/index.ts",
+  "compatibility_date": "2026-05-01",
+  "dev": {
+    "port": 1999
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "Table", "class_name": "Table" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Table"] }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

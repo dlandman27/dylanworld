@@ -19,7 +19,7 @@ export interface Peer {
 const HOST =
   location.hostname === 'localhost' || location.hostname === '127.0.0.1'
     ? 'localhost:1999'
-    : 'dylanworld.dlandman27.partykit.dev' // confirmed/updated at deploy (Task 6)
+    : 'dylanworld-party.dylan-944.workers.dev' // Cloudflare Worker (partyserver)
 
 const ADJ = ['lucky', 'coral', 'wobbly', 'shiny', 'sneaky', 'golden', 'dizzy', 'tiny', 'brave', 'noisy']
 const NOUN = ['marble', 'die', 'pawn', 'domino', 'top', 'coin', 'chip', 'block', 'duck', 'card']
@@ -34,7 +34,8 @@ let lastY = 0
 
 function connect(code: string): void {
   room = code
-  socket = new PartySocket({ host: HOST, room: code })
+  // party: 'table' = the kebab-cased Durable Object binding name ("Table")
+  socket = new PartySocket({ host: HOST, room: code, party: 'table' })
   socket.addEventListener('message', (e: MessageEvent) => {
     let m: { t?: string; id?: string; x?: number; y?: number; cur?: string; name?: string }
     try { m = JSON.parse(e.data as string) } catch { return }
