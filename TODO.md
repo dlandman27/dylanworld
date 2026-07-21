@@ -3,9 +3,11 @@
 ## Multiplayer — PartyKit
 Host a table, friends join via room link (`?room=XXXX`), play together.
 - [x] Deploy the site — LIVE at https://dylanworld-alpha.vercel.app (2026-07-20)
-- [ ] PartyKit setup: party server in-repo, room create/join, `?room=` param
-- [ ] Phase 1 — presence: broadcast cursor positions; render other players'
-      cursors with their equipped cursor-arcade skin + name tag
+- [x] Party server LIVE (2026-07-20) — Cloudflare Durable Object via partyserver
+      at dylanworld-party.dylan-944.workers.dev (partykit.dev hosted platform is
+      dead; ported). Abuse limits: 32 conns/table, 1KB msgs, 30/s rate.
+- [x] Phase 1 — presence SHIPPED: host-a-table chip, `?room=` links, ghost
+      cursors with equipped skins + name tags, live headcount
 - [ ] Phase 2 — board games as synced events (chess moves, scrabble placements,
       card flips)
 - [ ] Phase 3 — shared physics: host-authoritative simulation, guests send
