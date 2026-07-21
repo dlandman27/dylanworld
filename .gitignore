@@ -5,3 +5,4 @@ dist/
 
 # Windows bash crash dumps
 *.stackdump
+.wrangler/
