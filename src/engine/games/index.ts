@@ -11,6 +11,7 @@ import { createNotes } from './notes'
 import { createMagnifier } from './magnifier'
 import { createHotwheels } from './hotwheels'
 import { createEasyButton } from './easybutton'
+import { createBackgammon } from './backgammon'
 // import { createSoccer } from './soccer' // parked — re-enable in createGames too
 import { createOverhead } from './overhead'
 import { createMail } from './mail'
@@ -44,6 +45,7 @@ export function createGames(): TableGame[] {
     createNotes(2250, 2050),
     createMagnifier(3000, 2350),
     createEasyButton(4700, 3250),
+    createBackgammon(3500, 3150),
     // createSoccer(), // parked — bring back when the table's bigger
     createHotwheels(),
     // ambient cloud/bird shadows — draws only in drawAbove, so it shades every
