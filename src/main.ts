@@ -9,6 +9,7 @@ import { driveTarget } from './engine/games/hotwheels'
 import { initCursors } from './engine/cursor'
 import { initCursorShop } from './ui/cursorShop'
 import { initAudio } from './engine/audio'
+import { setPointer } from './engine/pointer'
 import { initNet, sendCursor } from './engine/net'
 import { drawPeerCursors } from './ui/peerCursors'
 import { initTableHost } from './ui/tableHost'
@@ -82,6 +83,7 @@ function frame(now: number): void {
     camera.vel.y = 0
   }
   updateInputWorld(input, camera, canvas)     // world point under the cursor, post-pan
+  setPointer(input.world.x, input.world.y)    // publish cursor pos for ambient critters
   sendCursor(input.world.x, input.world.y)
   updatePhysics(props, input, camera, dt)
   for (const g of games) g.update(dt, now)

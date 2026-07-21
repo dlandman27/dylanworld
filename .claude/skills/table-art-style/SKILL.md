@@ -59,6 +59,33 @@ rejected. Match this exactly.
 - Faked depth done right: **blocks.ts** (side band + bevel), **top.ts**
 - Sphere with rolling texture: **rollingBall.ts** + marble/soccer cells
 
+## Make it FEEL alive — micro-interactions are non-negotiable
+
+A piece that only "works" is half-built. Everything on this table responds with
+small, tactile feedback — that's the whole soul of the project. Before you call
+a game done, it must have the little touches that sell it:
+
+- **Press feedback**: anything tappable depresses / shrinks / lifts on press
+  (easy button sinks, iPad icons shrink, spinner flapper ticks). Never a dead
+  click.
+- **Nothing teleports**: state changes animate. Checkers glide to their spot,
+  dice tumble before settling, a lifted piece eases toward the cursor with a
+  little lag, the lock screen slides. Ease toward targets
+  (`v += (target - v) * min(1, dt*k)`), don't snap.
+- **Idle life**: a gentle bob, a blink, a hint that pulses (the "swipe up"
+  chevron bobs, proximity hints sway). Static = dead.
+- **Reward the touch**: `spark()` + `clunk()` on impacts and completions; a
+  win-pulse, a "GOAL!"/"DOUBLES!" callout, a settle-bounce. Give the player a
+  tiny payoff for doing the thing.
+- **Real details over fake ones**: if it's a device, use the real clock, the
+  real battery, a real power button. Authentic specifics ("9:41" → the actual
+  time) are what make people grin.
+- **Settle, don't stop**: motion decays with friction/damping and lands with a
+  small overshoot or squash, never a hard halt.
+
+If a new piece has none of these, it isn't finished — add at least press
+feedback + one animated transition + one idle flourish before shipping.
+
 ## The smell test before you commit a drawing
 
 - Did I use a gradient for a body/face? → replace with a flat fill.

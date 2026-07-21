@@ -23,6 +23,12 @@ interface LensDeps {
 let deps: LensDeps | null = null
 let lensing = false // reentrancy guard: no lenses inside lenses
 
+/** True while the world is being re-rendered inside the lens — critters can use
+ * this to reveal a secret (e.g. the fly's sign) only when magnified. */
+export function isLensing(): boolean {
+  return lensing
+}
+
 export function bindLens(d: LensDeps): void {
   deps = d
 }

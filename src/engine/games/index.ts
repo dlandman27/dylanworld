@@ -12,8 +12,12 @@ import { createMagnifier } from './magnifier'
 import { createHotwheels } from './hotwheels'
 import { createEasyButton } from './easybutton'
 import { createBackgammon } from './backgammon'
+import { createIpad } from './ipad'
+// import { createSandbox } from './sandbox' // parked — re-enable in createGames too
 // import { createSoccer } from './soccer' // parked — re-enable in createGames too
 import { createOverhead } from './overhead'
+import { createFly } from './fly'
+// import { createSwatter } from './swatter' // parked — re-enable in createGames too
 import { createMail } from './mail'
 import type { MailGame } from './mail'
 import { initContactCard } from '../../ui/contactCard'
@@ -43,14 +47,19 @@ export function createGames(): TableGame[] {
     createTop(1500, 1700, GOLD),
     createTeeth(4250, 1900),
     createNotes(2250, 2050),
-    createMagnifier(3000, 2350),
     createEasyButton(4700, 3250),
     createBackgammon(3500, 3150),
+    createIpad(4650, 650),
+    // createSandbox(820, 3020), // parked — hidden for now
     // createSoccer(), // parked — bring back when the table's bigger
     createHotwheels(),
     // ambient cloud/bird shadows — draws only in drawAbove, so it shades every
     // game and prop; placed after the tops so shadows fall on standing pieces too
     createOverhead(),
     createBlocks(), // the hero title — drawn last, always on top of other games
+    createFly(), createFly(), createFly(), createFly(), createFly(), createFly(), // ambient houseflies
+    // createSwatter(2100, 1550), // parked — grab it and whack them
+    // magnifier LAST so its lens covers the flies (and magnifies them — try it)
+    createMagnifier(3000, 2350),
   ]
 }
