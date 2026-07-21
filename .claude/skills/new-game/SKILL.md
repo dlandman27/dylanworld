@@ -53,6 +53,9 @@ Capture rules learned the hard way:
 
 ## House art style (must match or it looks pasted-on)
 
+**Load the `table-art-style` skill before drawing anything** — it is the full
+rule set. Summary below; the skill is authoritative.
+
 - Hand-drawn canvas art only. **No emoji, no images, no external assets.**
 - Ink outlines (`INK`, lineWidth 2–3.5, `lineJoin 'round'`) on every shape.
 - **Hard offset shadows, never blur**: dark shape at `+3..8px x, +5..12px y`,

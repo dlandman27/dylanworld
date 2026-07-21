@@ -9,6 +9,9 @@ import { createTop, GOLD } from './top'
 import { createTeeth } from './teeth'
 import { createNotes } from './notes'
 import { createMagnifier } from './magnifier'
+import { createHotwheels } from './hotwheels'
+import { createEasyButton } from './easybutton'
+// import { createSoccer } from './soccer' // parked — re-enable in createGames too
 import { createOverhead } from './overhead'
 import { createMail } from './mail'
 import type { MailGame } from './mail'
@@ -40,6 +43,9 @@ export function createGames(): TableGame[] {
     createTeeth(4250, 1900),
     createNotes(2250, 2050),
     createMagnifier(3000, 2350),
+    createEasyButton(4700, 3250),
+    // createSoccer(), // parked — bring back when the table's bigger
+    createHotwheels(),
     // ambient cloud/bird shadows — draws only in drawAbove, so it shades every
     // game and prop; placed after the tops so shadows fall on standing pieces too
     createOverhead(),

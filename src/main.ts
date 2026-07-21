@@ -5,6 +5,7 @@ import { createProps, updatePhysics, drawProps, drawImpacts } from './engine/phy
 import { drawTable } from './engine/table'
 import { createGames } from './engine/games'
 import { bindLens } from './engine/games/magnifier'
+import { driveTarget } from './engine/games/hotwheels'
 import { initCursors } from './engine/cursor'
 import { initCursorShop } from './ui/cursorShop'
 import { initAudio } from './engine/audio'
@@ -71,6 +72,15 @@ function frame(now: number): void {
 
   stepZoom(camera, canvas, dt)               // ease zoom toward its target
   updateCameraPan(camera, input, canvas, dt) // cursor drags/glides the table
+  // while driving a car, the camera rides along
+  const drive = driveTarget()
+  if (drive && !input.panning) {
+    const follow = 1 - Math.exp(-4 * dt)
+    camera.pos.x += (drive.x - camera.pos.x) * follow
+    camera.pos.y += (drive.y - camera.pos.y) * follow
+    camera.vel.x = 0
+    camera.vel.y = 0
+  }
   updateInputWorld(input, camera, canvas)     // world point under the cursor, post-pan
   sendCursor(input.world.x, input.world.y)
   updatePhysics(props, input, camera, dt)

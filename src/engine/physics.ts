@@ -5,6 +5,8 @@ import { tuning } from '../config/tuning'
 import { theme } from '../config/theme'
 import { world } from '../config/world'
 import { worldToScreen } from './world'
+import { drawRollingBall } from './rollingBall'
+import type { CellCtx } from './rollingBall'
 
 // fr = friction multiplier: marbles roll far (low), tiles are heavy wood (high)
 const PROP_SPECS: Record<PropKind, { radius: number; mass: number; color: string; fr: number }> = {
@@ -29,6 +31,80 @@ const CHIP_COLORS = [
 
 const COIN_FLIP_DUR = 0.8 // seconds in the air
 const COIN_FLIP_SPINS = 5 // edge-over-edge turns per flip
+
+// One marble texture cell — the glass innards (swirl / cat's-eye / galaxy /
+// candy), drawn through the shared rolling-ball scaffold's warp + rnd.
+function paintMarbleCell(g: CanvasRenderingContext2D, c: CellCtx, style: number, accent: string): void {
+  const { cellX, cellY, s, r, warp, rnd } = c
+  const W = 'rgba(255,255,255,0.65)'
+  const D = 'rgba(32,26,23,0.24)'
+  if (style === 0) {
+    // swirl ribbons: curvy strokes + trailing droplets
+    for (let k = 0; k < 3; k++) {
+      const a0 = rnd() * Math.PI * 2
+      const p0 = warp(cellX + (rnd() - 0.5) * s * 0.8, cellY + (rnd() - 0.5) * s * 0.8)
+      const p1 = warp(cellX + Math.cos(a0) * s * 0.5, cellY + Math.sin(a0) * s * 0.5)
+      const pc = warp(cellX + Math.cos(a0 + 1.4) * s * 0.55, cellY + Math.sin(a0 + 1.4) * s * 0.55)
+      g.strokeStyle = k === 0 ? accent : k === 1 ? W : D
+      g.lineWidth = r * (0.14 + rnd() * 0.08) * p0.sc
+      g.lineCap = 'round'
+      g.beginPath(); g.moveTo(p0.x, p0.y); g.quadraticCurveTo(pc.x, pc.y, p1.x, p1.y); g.stroke()
+    }
+    for (let k = 0; k < 3; k++) {
+      const q = warp(cellX + (rnd() - 0.5) * s, cellY + (rnd() - 0.5) * s)
+      g.fillStyle = k % 2 ? W : accent
+      g.beginPath(); g.arc(q.x, q.y, r * 0.07 * q.sc, 0, Math.PI * 2); g.fill()
+    }
+  } else if (style === 1) {
+    // cat's eye: twisted blades radiating from the cell heart
+    const heart = { x: cellX + (rnd() - 0.5) * s * 0.3, y: cellY + (rnd() - 0.5) * s * 0.3 }
+    const base = rnd() * Math.PI
+    for (let k = 0; k < 4; k++) {
+      const a = base + (k / 4) * Math.PI * 2
+      const tip = warp(heart.x + Math.cos(a) * s * 0.52, heart.y + Math.sin(a) * s * 0.52)
+      const mid = warp(heart.x + Math.cos(a + 0.5) * s * 0.28, heart.y + Math.sin(a + 0.5) * s * 0.28)
+      const h = warp(heart.x, heart.y)
+      g.strokeStyle = k % 2 ? accent : W
+      g.lineWidth = r * (0.2 - k * 0.03) * h.sc
+      g.lineCap = 'round'
+      g.beginPath(); g.moveTo(h.x, h.y); g.quadraticCurveTo(mid.x, mid.y, tip.x, tip.y); g.stroke()
+    }
+    const h = warp(heart.x, heart.y)
+    g.fillStyle = D
+    g.beginPath(); g.arc(h.x, h.y, r * 0.1 * h.sc, 0, Math.PI * 2); g.fill()
+  } else if (style === 2) {
+    // galaxy: a nebula blob + a spray of flecks
+    const nb = warp(cellX + (rnd() - 0.5) * s * 0.5, cellY + (rnd() - 0.5) * s * 0.5)
+    g.fillStyle = 'rgba(255,255,255,0.18)'
+    g.beginPath(); g.arc(nb.x, nb.y, r * 0.42 * nb.sc, 0, Math.PI * 2); g.fill()
+    g.fillStyle = accent
+    g.beginPath(); g.arc(nb.x, nb.y, r * 0.16 * nb.sc, 0, Math.PI * 2); g.fill()
+    for (let k = 0; k < 9; k++) {
+      const q = warp(cellX + (rnd() - 0.5) * s, cellY + (rnd() - 0.5) * s)
+      g.fillStyle = k % 3 === 0 ? W : k % 3 === 1 ? 'rgba(255,255,255,0.4)' : D
+      g.beginPath(); g.arc(q.x, q.y, r * (0.03 + rnd() * 0.06) * q.sc, 0, Math.PI * 2); g.fill()
+    }
+  } else {
+    // candy stripes: a band of wavy parallel strokes
+    const ang = rnd() * Math.PI
+    const ca = Math.cos(ang), sa = Math.sin(ang)
+    for (let k = -1; k <= 1; k++) {
+      const off = k * s * 0.24
+      const pts: { x: number; y: number; sc: number }[] = []
+      for (let tstep = -1; tstep <= 1; tstep += 0.5) {
+        const along = tstep * s * 0.6
+        const wave = Math.sin(tstep * 5 + k) * s * 0.08
+        pts.push(warp(cellX + ca * along - sa * (off + wave), cellY + sa * along + ca * (off + wave)))
+      }
+      g.strokeStyle = k === 0 ? accent : k === -1 ? W : D
+      g.lineWidth = r * (k === 0 ? 0.16 : 0.1) * pts[2].sc
+      g.lineCap = 'round'
+      g.beginPath()
+      pts.forEach((q, i) => (i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)))
+      g.stroke()
+    }
+  }
+}
 
 // glass marble palette, cycled by prop id
 const MARBLE_COLORS = [
@@ -88,6 +164,9 @@ export interface Obstacle {
   half: number
   /** identifies the registering object so it can skip colliding with itself */
   owner?: unknown
+  /** obstacle's own velocity (world/s) — lets the soccer ball launch off cars */
+  vx?: number
+  vy?: number
   /** called when something smacks it — lets the owner nudge/react */
   onHit?: (ix: number, iy: number) => void
 }
@@ -228,7 +307,10 @@ export function updatePhysics(props: Prop[], input: InputState, cam: CameraState
         const nx = dx / d, ny = dy / d
         p.pos.x = cx + nx * p.radius
         p.pos.y = cy + ny * p.radius
-        const along = p.vel.x * nx + p.vel.y * ny
+        // resolve against the obstacle's RELATIVE velocity, so a moving obstacle
+        // (a driving car) flings the prop instead of just nudging it aside
+        const ovx = o.vx ?? 0, ovy = o.vy ?? 0
+        const along = (p.vel.x - ovx) * nx + (p.vel.y - ovy) * ny
         if (along < 0) {
           p.vel.x -= (1 + 0.65) * along * nx
           p.vel.y -= (1 + 0.65) * along * ny
@@ -327,134 +409,18 @@ export function drawProps(ctx: CanvasRenderingContext2D, props: Prop[], cam: Cam
       ctx.lineWidth = 2.5
       ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(10, 10); ctx.lineTo(-10, 10); ctx.closePath(); ctx.fill(); ctx.stroke()
     } else if (p.kind === 'pebble') {
-      // glass marble: a tiled pattern inside the glass SCROLLS in the direction
-      // it was rolled (p.tex accumulates travel), selling the rolling motion.
-      const col = MARBLE_COLORS[(p.id - 1) % MARBLE_COLORS.length]
-      const r = spec.radius
-      // shadow
-      ctx.fillStyle = 'rgba(32,26,23,0.22)'
-      ctx.beginPath(); ctx.ellipse(2, 4, r, r * 0.85, 0, 0, Math.PI * 2); ctx.fill()
-      // body
-      ctx.fillStyle = col
-      ctx.strokeStyle = theme.colors.ink
-      ctx.lineWidth = 2.4
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
-      // rolling texture: a 2D pattern that scrolls with the movement vector,
-      // rendered through a FISHEYE lens — magnified at the centre, compressed
-      // toward the rim — so the glass visibly bends it as it streams past.
-      ctx.save()
-      ctx.beginPath(); ctx.arc(0, 0, r - 1.5, 0, Math.PI * 2); ctx.clip()
-      // Rich glass innards — swirl ribbons, cat's-eye blades, galaxy flecks,
-      // candy stripes — built from dense per-cell clusters. The cluster layout
-      // repeats on a 2×2 super-tile in pattern space, so the texture is
-      // seamlessly TILEABLE: it scrolls forever with no seams or pops.
+      // glass marble: the shared rolling-ball renderer + the marble texture
       const style = (p.id - 1) % 4
-      const s = r * 2.4
-      const ox = ((p.tex.x % s) + s) % s
-      const oy = ((p.tex.y % s) + s) % s
-      const nx = Math.floor(p.tex.x / s)
-      const ny = Math.floor(p.tex.y / s)
-      const W = 'rgba(255,255,255,0.65)'
-      const D = 'rgba(32,26,23,0.24)'
       const accent = MARBLE_COLORS[(p.id + 2) % MARBLE_COLORS.length]
-      // fisheye warp for any pattern-space point
-      const warpPt = (px: number, py: number): { x: number; y: number; sc: number } => {
-        const d = Math.hypot(px, py)
-        const w = 1 / (1 + 0.18 * (d / r) * (d / r)) // subtle lens, not a peephole
-        return { x: px * w, y: py * w, sc: w }
-      }
-      for (let gx = -2; gx <= 2; gx++) {
-        for (let gy = -2; gy <= 2; gy++) {
-          const cellX = gx * s + ox - s
-          const cellY = gy * s + oy - s
-          if (Math.hypot(cellX, cellY) > r * 2.6) continue
-          // stable pattern-space identity → same cluster every wrap (tileable)
-          const kx = (((gx - nx) % 2) + 2) % 2
-          const ky = (((gy - ny) % 2) + 2) % 2
-          let seed = (p.id * 7919 + kx * 131 + ky * 137 + style * 17) | 0
-          const rnd = (): number => {
-            seed = (seed * 1103515245 + 12345) & 0x7fffffff
-            return seed / 0x7fffffff
-          }
-          if (style === 0) {
-            // swirl ribbons: curvy strokes + trailing droplets
-            for (let k = 0; k < 3; k++) {
-              const a0 = rnd() * Math.PI * 2
-              const p0 = warpPt(cellX + (rnd() - 0.5) * s * 0.8, cellY + (rnd() - 0.5) * s * 0.8)
-              const p1 = warpPt(cellX + Math.cos(a0) * s * 0.5, cellY + Math.sin(a0) * s * 0.5)
-              const pc = warpPt(cellX + Math.cos(a0 + 1.4) * s * 0.55, cellY + Math.sin(a0 + 1.4) * s * 0.55)
-              ctx.strokeStyle = k === 0 ? accent : k === 1 ? W : D
-              ctx.lineWidth = r * (0.14 + rnd() * 0.08) * p0.sc
-              ctx.lineCap = 'round'
-              ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.quadraticCurveTo(pc.x, pc.y, p1.x, p1.y); ctx.stroke()
-            }
-            for (let k = 0; k < 3; k++) {
-              const q = warpPt(cellX + (rnd() - 0.5) * s, cellY + (rnd() - 0.5) * s)
-              ctx.fillStyle = k % 2 ? W : accent
-              ctx.beginPath(); ctx.arc(q.x, q.y, r * 0.07 * q.sc, 0, Math.PI * 2); ctx.fill()
-            }
-          } else if (style === 1) {
-            // cat's eye: twisted blades radiating from the cell heart
-            const heart = { x: cellX + (rnd() - 0.5) * s * 0.3, y: cellY + (rnd() - 0.5) * s * 0.3 }
-            const base = rnd() * Math.PI
-            for (let k = 0; k < 4; k++) {
-              const a = base + (k / 4) * Math.PI * 2
-              const tip = warpPt(heart.x + Math.cos(a) * s * 0.52, heart.y + Math.sin(a) * s * 0.52)
-              const mid = warpPt(heart.x + Math.cos(a + 0.5) * s * 0.28, heart.y + Math.sin(a + 0.5) * s * 0.28)
-              const h = warpPt(heart.x, heart.y)
-              ctx.strokeStyle = k % 2 ? accent : W
-              ctx.lineWidth = r * (0.2 - k * 0.03) * h.sc
-              ctx.lineCap = 'round'
-              ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.quadraticCurveTo(mid.x, mid.y, tip.x, tip.y); ctx.stroke()
-            }
-            const h = warpPt(heart.x, heart.y)
-            ctx.fillStyle = D
-            ctx.beginPath(); ctx.arc(h.x, h.y, r * 0.1 * h.sc, 0, Math.PI * 2); ctx.fill()
-          } else if (style === 2) {
-            // galaxy: a nebula blob + a spray of flecks
-            const nb = warpPt(cellX + (rnd() - 0.5) * s * 0.5, cellY + (rnd() - 0.5) * s * 0.5)
-            ctx.fillStyle = 'rgba(255,255,255,0.18)'
-            ctx.beginPath(); ctx.arc(nb.x, nb.y, r * 0.42 * nb.sc, 0, Math.PI * 2); ctx.fill()
-            ctx.fillStyle = accent
-            ctx.beginPath(); ctx.arc(nb.x, nb.y, r * 0.16 * nb.sc, 0, Math.PI * 2); ctx.fill()
-            for (let k = 0; k < 9; k++) {
-              const q = warpPt(cellX + (rnd() - 0.5) * s, cellY + (rnd() - 0.5) * s)
-              ctx.fillStyle = k % 3 === 0 ? W : k % 3 === 1 ? 'rgba(255,255,255,0.4)' : D
-              ctx.beginPath(); ctx.arc(q.x, q.y, r * (0.03 + rnd() * 0.06) * q.sc, 0, Math.PI * 2); ctx.fill()
-            }
-          } else {
-            // candy stripes: a band of wavy parallel strokes
-            const ang = rnd() * Math.PI
-            const ca = Math.cos(ang), sa = Math.sin(ang)
-            for (let k = -1; k <= 1; k++) {
-              const off = k * s * 0.24
-              const pts: { x: number; y: number; sc: number }[] = []
-              for (let tstep = -1; tstep <= 1; tstep += 0.5) {
-                const along = tstep * s * 0.6
-                const wave = Math.sin(tstep * 5 + k) * s * 0.08
-                pts.push(warpPt(
-                  cellX + ca * along - sa * (off + wave),
-                  cellY + sa * along + ca * (off + wave),
-                ))
-              }
-              ctx.strokeStyle = k === 0 ? accent : k === -1 ? W : D
-              ctx.lineWidth = r * (k === 0 ? 0.16 : 0.1) * pts[2].sc
-              ctx.lineCap = 'round'
-              ctx.beginPath()
-              pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)))
-              ctx.stroke()
-            }
-          }
-        }
-      }
-      // curvature shading so it still reads as a sphere
-      ctx.fillStyle = 'rgba(32,26,23,0.14)'
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2)
-      ctx.arc(-r * 0.18, -r * 0.22, r * 0.92, 0, Math.PI * 2, true); ctx.fill()
-      ctx.restore()
-      // fixed glint on top
-      ctx.fillStyle = 'rgba(255,255,255,0.9)'
-      ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.42, r * 0.24, r * 0.13, -0.6, 0, Math.PI * 2); ctx.fill()
+      drawRollingBall(ctx, {
+        r: spec.radius,
+        tex: p.tex,
+        body: MARBLE_COLORS[(p.id - 1) % MARBLE_COLORS.length],
+        ink: theme.colors.ink,
+        seed: p.id,
+        style,
+        paint: (g, c) => paintMarbleCell(g, c, style, accent),
+      })
     } else if (p.kind === 'chip') {
       // casino chip: colored body, white edge ticks. Face 0 = dashed-ring
       // front, face 1 = solid-centre back, so a tap-flip visibly lands on

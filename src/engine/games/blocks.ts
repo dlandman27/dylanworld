@@ -68,6 +68,7 @@ export function createBlocks(): TableGame {
     })
   })
 
+  let contacts = new Set<number>() // block pairs touching last frame (spark debounce)
   let held: Block | null = null
   let target = { x: 0, y: 0 }
 
@@ -205,6 +206,7 @@ export function createBlocks(): TableGame {
       }
 
       // xy knocks — only between blocks in the SAME layer (their heights overlap)
+      const nowContacts = new Set<number>()
       for (let i = 0; i < blocks.length; i++) for (let j = i + 1; j < blocks.length; j++) {
         const a = blocks[i], b = blocks[j]
         if (a.grabbed || b.grabbed) continue
@@ -219,10 +221,15 @@ export function createBlocks(): TableGame {
         if (rel < 0) {
           a.vx += nx * rel * 0.7; a.vy += ny * rel * 0.7
           b.vx -= nx * rel * 0.7; b.vy -= ny * rel * 0.7
-          if (-rel > 130) spark(a.x + nx * R, a.y + ny * R, Math.min(1, -rel / 900))
           a.rot += rel * 0.0004; b.rot -= rel * 0.0004
+          // spark only on a FRESH hard hit — not every frame two blocks rest
+          // against each other (which was firing the impact endlessly)
+          const key = i * 1000 + j
+          nowContacts.add(key)
+          if (-rel > 130 && !contacts.has(key)) spark(a.x + nx * R, a.y + ny * R, Math.min(1, -rel / 900))
         }
       }
+      contacts = nowContacts
     },
     draw(g: Ctx) {
       // paint low-to-high so stacked/held blocks cover the ones beneath

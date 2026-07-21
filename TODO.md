@@ -13,6 +13,10 @@ Host a table, friends join via room link (`?room=XXXX`), play together.
 - [ ] Phase 3 — shared physics: host-authoritative simulation, guests send
       inputs, host broadcasts snapshots (~20/s), guests interpolate
 
+## Easy button
+- [ ] Replace the speech-bubble "That was easy." with the real voice clip —
+      add an audio asset, play it on button release (see easybutton.ts)
+
 ## Other open threads
 - [x] Repo home: now dlandman27/dylanworld (full history; old dylan-chalkboard copy can be deleted)
 - [x] Vercel hosting — deploy = git push
