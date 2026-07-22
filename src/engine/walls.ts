@@ -179,8 +179,157 @@ function drawWindow(ctx: Ctx, P: (t: number, s: number) => V, upAngle: number): 
   line(SfL, SfR, 'rgba(255,255,255,0.9)', 2)
 }
 
+// pennant bunting palette — the house accents, cycled along the string
+const PENNANT = ['#f0563e', '#5aa0db', '#b7ce3c', '#f47b28', '#a98fd0', '#ff7fa5', '#2fb0a3', '#f7c948']
+
+/** Two short pennant garlands flanking the window. Flags are built in WORLD units
+ * (so they never stretch) and rotated to the string's local tangent, so they fan
+ * around the swag instead of all hanging straight down. */
+function drawBunting(ctx: Ctx, P: (t: number, s: number) => V): void {
+  const sTop = 0.9, sag = 0.045    // how high the cord hangs + its centre droop
+  const flagW = 48, flagH = 64     // world half-width + length of each pennant
+  const cordS = (u: number): number => sTop - sag * Math.sin(Math.PI * u)
+
+  const garland = (tA: number, tB: number, n: number, c0: number): void => {
+    const at = (u: number): V => P(tA + (tB - tA) * u, cordS(u))
+    const flags: { aL: V; aR: V; tip: V; col: string }[] = []
+    for (let k = 0; k < n; k++) {
+      const u = (k + 0.5) / n
+      const c = at(u)
+      const a = at(Math.max(0, u - 0.5 / n)), b = at(Math.min(1, u + 0.5 / n))
+      let tx = b.x - a.x, ty = b.y - a.y; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L  // tangent
+      const dref = P(tA + (tB - tA) * u, cordS(u) - 0.05)        // "down the wall" reference
+      let px = -ty, py = tx                                       // perpendicular → point it down
+      if (px * (dref.x - c.x) + py * (dref.y - c.y) < 0) { px = -px; py = -py }
+      flags.push({
+        aL: { x: c.x - tx * flagW, y: c.y - ty * flagW },
+        aR: { x: c.x + tx * flagW, y: c.y + ty * flagW },
+        tip: { x: c.x + px * flagH, y: c.y + py * flagH },
+        col: PENNANT[(k + c0) % PENNANT.length],
+      })
+    }
+    // drop-shadows
+    ctx.fillStyle = 'rgba(32,26,23,0.13)'
+    for (const f of flags) { ctx.beginPath(); ctx.moveTo(f.aL.x + 4, f.aL.y + 6); ctx.lineTo(f.aR.x + 4, f.aR.y + 6); ctx.lineTo(f.tip.x + 4, f.tip.y + 6); ctx.closePath(); ctx.fill() }
+    // the string
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.lineCap = 'round'
+    ctx.beginPath()
+    for (let i = 0; i <= 24; i++) { const p = at(i / 24); i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y) }
+    ctx.stroke()
+    // the flags
+    ctx.lineWidth = 2.5; ctx.lineJoin = 'round'
+    for (const f of flags) {
+      ctx.beginPath(); ctx.moveTo(f.aL.x, f.aL.y); ctx.lineTo(f.aR.x, f.aR.y); ctx.lineTo(f.tip.x, f.tip.y); ctx.closePath()
+      ctx.fillStyle = f.col; ctx.fill(); ctx.strokeStyle = INK; ctx.stroke()
+    }
+  }
+
+  garland(0.08, 0.42, 9, 0)   // left of the window
+  garland(0.58, 0.92, 9, 3)   // right of the window
+}
+
+// a world point at offset (sx along-wall, sy up-wall) in world units from (tc,sc)
+function wpt(P: (t: number, s: number) => V, tc: number, sc: number, sx: number, sy: number): V {
+  const c = P(tc, sc)
+  const a = P(tc + 0.006, sc), b = P(tc - 0.006, sc)
+  let ax = a.x - b.x, ay = a.y - b.y; let l = Math.hypot(ax, ay) || 1; ax /= l; ay /= l
+  const u1 = P(tc, sc + 0.008), u2 = P(tc, sc - 0.008)
+  let ux = u1.x - u2.x, uy = u1.y - u2.y; l = Math.hypot(ux, uy) || 1; ux /= l; uy /= l
+  return { x: c.x + ax * sx + ux * sy, y: c.y + ay * sx + uy * sy }
+}
+
+/** A light switch — a plate that stands proud of the wall with a drop shadow and
+ * a recessed rocker. */
+function drawSwitch(ctx: Ctx, P: (t: number, s: number) => V, tc: number, sc: number): void {
+  const w = (sx: number, sy: number): V => wpt(P, tc, sc, sx, sy)
+  const sh = (p: V): V => ({ x: p.x + 5, y: p.y + 7 })
+  ctx.fillStyle = 'rgba(32,26,23,0.16)'
+  quad(ctx, sh(w(-15, -25)), sh(w(15, -25)), sh(w(15, 25)), sh(w(-15, 25))); ctx.fill()   // drop shadow
+  quad(ctx, w(-15, -25), w(15, -25), w(15, 25), w(-15, 25)); ctx.fillStyle = '#f4f5f6'; ctx.fill()
+  ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke()
+  const L = (a: V, b: V, col: string): void => { ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke() }
+  L(w(-15, 25), w(15, 25), 'rgba(255,255,255,0.85)'); L(w(-15, -25), w(15, -25), 'rgba(120,130,142,0.45)')  // bevel
+  quad(ctx, w(-5, -12), w(5, -12), w(5, 12), w(-5, 12)); ctx.fillStyle = '#c9ced3'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.8; ctx.stroke()  // well
+  quad(ctx, w(-4, -2), w(4, -2), w(4, 11), w(-4, 11)); ctx.fillStyle = '#eef1f3'; ctx.fill(); ctx.stroke()  // rocker (flipped up)
+}
+
+/** A two-socket outlet — a proud plate with recessed sockets and prong slots. */
+function drawOutlet(ctx: Ctx, P: (t: number, s: number) => V, tc: number, sc: number): void {
+  const w = (sx: number, sy: number): V => wpt(P, tc, sc, sx, sy)
+  const sh = (p: V): V => ({ x: p.x + 5, y: p.y + 7 })
+  ctx.fillStyle = 'rgba(32,26,23,0.16)'
+  quad(ctx, sh(w(-16, -22)), sh(w(16, -22)), sh(w(16, 22)), sh(w(-16, 22))); ctx.fill()   // drop shadow
+  quad(ctx, w(-16, -22), w(16, -22), w(16, 22), w(-16, 22)); ctx.fillStyle = '#f4f5f6'; ctx.fill()
+  ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke()
+  const L = (a: V, b: V, col: string): void => { ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke() }
+  L(w(-16, 22), w(16, 22), 'rgba(255,255,255,0.85)'); L(w(-16, -22), w(16, -22), 'rgba(120,130,142,0.45)')  // bevel
+  for (const oy of [9, -9]) {
+    quad(ctx, w(-7, oy - 7), w(7, oy - 7), w(7, oy + 7), w(-7, oy + 7)); ctx.fillStyle = '#dfe3e6'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.6; ctx.stroke()  // recessed socket
+    ctx.fillStyle = '#3a4048'
+    quad(ctx, w(-3, oy - 4), w(-1.5, oy - 4), w(-1.5, oy + 1), w(-3, oy + 1)); ctx.fill()
+    quad(ctx, w(1.5, oy - 4), w(3, oy - 4), w(3, oy + 1), w(1.5, oy + 1)); ctx.fill()
+  }
+}
+
+/** A six-panel door: recessed panels with real reveal faces, and a casing that
+ * projects off the wall toward the room (inx/iny = the wall's inward direction). */
+function drawDoor(ctx: Ctx, P: (t: number, s: number) => V, inx: number, iny: number): void {
+  const dt0 = 0.13, dt1 = 0.29, s0 = 0.0, s1 = 0.72
+  const dw = dt1 - dt0, dh = s1 - s0
+  const fillQ = (ta: number, tb: number, sa: number, sb: number, col: string): void => { quad(ctx, P(ta, sa), P(tb, sa), P(tb, sb), P(ta, sb)); ctx.fillStyle = col; ctx.fill() }
+  const inkQ = (ta: number, tb: number, sa: number, sb: number, lw: number): void => { quad(ctx, P(ta, sa), P(tb, sa), P(tb, sb), P(ta, sb)); ctx.strokeStyle = INK; ctx.lineWidth = lw; ctx.stroke() }
+  const push = (p: V, d: number): V => ({ x: p.x + inx * d, y: p.y + iny * d })
+  const ft = dw * 0.12, fs = dh * 0.02, CD = 34   // casing width + projection depth
+
+  // cast shadow on the wall (offset down-right)
+  const so = (ta: number, sa: number): V => { const p = P(ta, sa); return { x: p.x + 10, y: p.y + 11 } }
+  quad(ctx, so(dt0 - ft, s0), so(dt1 + ft, s0), so(dt1 + ft, s1 + fs), so(dt0 - ft, s1 + fs)); ctx.fillStyle = 'rgba(32,26,23,0.12)'; ctx.fill()
+
+  // door slab (recessed at the wall plane) + six recessed panels
+  fillQ(dt0, dt1, s0, s1, '#e9ebee')
+  const px0 = dt0 + dw * 0.15, px1 = dt1 - dw * 0.15, ps0 = s0 + dh * 0.05, ps1 = s1 - dh * 0.045
+  const gT = dw * 0.08, gS = dh * 0.024
+  for (let c = 0; c < 2; c++) for (let r = 0; r < 3; r++) {
+    const a0 = px0 + (px1 - px0) * (c / 2) + gT / 2, a1 = px0 + (px1 - px0) * ((c + 1) / 2) - gT / 2
+    const b0 = ps0 + (ps1 - ps0) * (r / 3) + gS / 2, b1 = ps0 + (ps1 - ps0) * ((r + 1) / 3) - gS / 2
+    const ia = (a1 - a0) * 0.17, ib = (b1 - b0) * 0.13
+    const i0 = a0 + ia, i1 = a1 - ia, j0 = b0 + ib, j1 = b1 - ib
+    fillQ(a0, a1, j1, b1, '#ccd1d6')   // top reveal (shadow)
+    fillQ(a0, i0, b0, b1, '#d2d7dc')   // left reveal (shadow)
+    fillQ(a0, a1, b0, j0, '#fbfcfd')   // bottom reveal (light)
+    fillQ(i1, a1, b0, b1, '#f3f5f7')   // right reveal (light)
+    fillQ(i0, i1, j0, j1, '#e3e6e9')   // sunken panel face
+    inkQ(i0, i1, j0, j1, 1.5); inkQ(a0, a1, b0, b1, 1.8)
+  }
+
+  // brass knob + a soft shadow on the door
+  const knS = s0 + dh * 0.42, kc = P(dt1 - dw * 0.12, knS)
+  const kr = Math.hypot(P(dt1, knS).x - P(dt0, knS).x, P(dt1, knS).y - P(dt0, knS).y) * 0.07
+  ctx.fillStyle = 'rgba(32,26,23,0.18)'; ctx.beginPath(); ctx.ellipse(kc.x + kr * 0.4, kc.y + kr * 0.5, kr * 1.4, kr * 1.1, 0, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#cbd0d5'; ctx.beginPath(); ctx.arc(kc.x, kc.y, kr * 1.4, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke()
+  ctx.fillStyle = '#e9c96c'; ctx.beginPath(); ctx.arc(kc.x, kc.y, kr, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = 2.2; ctx.stroke()
+  ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.beginPath(); ctx.arc(kc.x - kr * 0.3, kc.y - kr * 0.3, kr * 0.34, 0, Math.PI * 2); ctx.fill()
+
+  // ---- projecting casing: a frame that stands off the wall toward the room ----
+  const oTL = P(dt0 - ft, s1 + fs), oTR = P(dt1 + ft, s1 + fs), oBL = P(dt0 - ft, s0), oBR = P(dt1 + ft, s0)
+  const iTL = P(dt0, s1), iTR = P(dt1, s1), iBL = P(dt0, s0), iBR = P(dt1, s0)
+  // inner return (the reveal from the door back out to the casing front) — shaded jambs
+  quad(ctx, iTL, iTR, push(iTR, CD), push(iTL, CD)); ctx.fillStyle = '#c5cbd1'; ctx.fill()   // head jamb (shadow)
+  quad(ctx, iTL, iBL, push(iBL, CD), push(iTL, CD)); ctx.fillStyle = '#d6dbe0'; ctx.fill()   // hinge-side jamb (lit)
+  quad(ctx, iTR, iBR, push(iBR, CD), push(iTR, CD)); ctx.fillStyle = '#bcc2c8'; ctx.fill()   // latch-side jamb (shadow)
+  // casing front frame (pushed toward the room), three bars — top / left / right
+  const pOTL = push(oTL, CD), pOTR = push(oTR, CD), pOBL = push(oBL, CD), pOBR = push(oBR, CD)
+  const pITL = push(iTL, CD), pITR = push(iTR, CD), pIBL = push(iBL, CD), pIBR = push(iBR, CD)
+  ctx.fillStyle = '#f6f7f8'; quad(ctx, pOTL, pOTR, pITR, pITL); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke()   // top
+  ctx.fillStyle = '#f6f7f8'; quad(ctx, pOTL, pITL, pIBL, pOBL); ctx.fill(); ctx.stroke()                                            // left
+  ctx.fillStyle = '#edf0f2'; quad(ctx, pOTR, pITR, pIBR, pOBR); ctx.fill(); ctx.stroke()                                            // right
+  // outer sides of the casing (its thickness from the wall out to the front) — shaded
+  ctx.fillStyle = '#b7bdc3'; quad(ctx, oTR, pOTR, pOBR, oBR); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke()     // latch-side outer
+  ctx.fillStyle = '#c3c9cf'; quad(ctx, oTL, oTR, pOTR, pOTL); ctx.fill(); ctx.stroke()                                              // top outer
+}
+
 /** One folded wall: floor edge p0→p1, splayed outer edge q0→q1 (trapezoid). */
-function drawWall(ctx: Ctx, p0: V, p1: V, q0: V, q1: V, seed: number, withWindow = false): void {
+function drawWall(ctx: Ctx, p0: V, p1: V, q0: V, q1: V, seed: number, withWindow = false, withBunting = false, withDoor = false): void {
   // P(t, s): point at fraction t along the wall, depth s outward (0=floor,1=top)
   const P = (t: number, s: number): V => lerp(lerp(p0, q0, s), lerp(p1, q1, s), t)
 
@@ -255,7 +404,9 @@ function drawWall(ctx: Ctx, p0: V, p1: V, q0: V, q1: V, seed: number, withWindow
   q4(projF(bbl, 10), projF(bbr, 10), projF(bbr, 20), projF(bbl, 20), BASE_SH, 2.5)           // fascia
   q4(bbl, bbr, projF(bbr, 10), projF(bbl, 10), '#fbfcfd', 2.5)                               // top ledge
 
-  // the window sits on this wall (drawn last so its sill rests on the chair rail)
+  // pennant bunting strung across the sky, then the window
+  if (withBunting) drawBunting(ctx, P)
+  if (withDoor) { drawDoor(ctx, P, inx, iny); drawSwitch(ctx, P, 0.345, 0.46); drawOutlet(ctx, P, 0.46, 0.14) }
   if (withWindow) drawWindow(ctx, P, upAngle)
 
   ctx.restore()
@@ -275,10 +426,10 @@ export function drawWalls(ctx: Ctx, _cam: CameraState, _canvas: HTMLCanvasElemen
   const A = { x: 0, y: 0 }, B = { x: W, y: 0 }, C = { x: W, y: H }, E = { x: 0, y: H }
   const Ao = { x: -D, y: -D }, Bo = { x: W + D, y: -D }, Co = { x: W + D, y: H + D }, Eo = { x: -D, y: H + D }
 
-  drawWall(ctx, A, B, Ao, Bo, 1, true)  // top (with the window)
+  drawWall(ctx, A, B, Ao, Bo, 1, true, true)  // top (window + bunting)
   drawWall(ctx, B, C, Bo, Co, 2)  // right
   drawWall(ctx, C, E, Co, Eo, 3)  // bottom
-  drawWall(ctx, E, A, Eo, Ao, 4)  // left
+  drawWall(ctx, E, A, Eo, Ao, 4, false, false, true)  // left (door + fixtures)
 
   // fold creases at the corners, so the box read is unmistakable
   ctx.strokeStyle = 'rgba(32,26,23,0.22)'; ctx.lineWidth = 3
