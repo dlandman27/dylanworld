@@ -17,7 +17,7 @@ export function createCamera(): CameraState {
 
 // how far past the floor edge you can pan — reveals the wainscot + wall, then
 // stops, so dragging into the edge feels like hitting the wall of the room.
-const EDGE = 600
+const EDGE = 820
 
 /** Keep the view on the room; if the floor is smaller than the viewport, center it. */
 function clampCamera(cam: CameraState, canvas: HTMLCanvasElement): void {

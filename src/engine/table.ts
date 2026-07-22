@@ -162,6 +162,23 @@ function drawRug(ctx: Ctx): void {
   ctx.restore()
 }
 
+/** Warm sunlight spilling from the top-wall window down onto the floor. */
+function drawSunbeam(ctx: Ctx): void {
+  const cx = world.spawn.x  // the window is centred on the top wall (x = width/2)
+  // soft outer shaft, skewed down-left (the sun sits on the right of the window)
+  ctx.fillStyle = 'rgba(255,236,175,0.14)'
+  ctx.beginPath()
+  ctx.moveTo(cx - 440, 0); ctx.lineTo(cx + 440, 0)
+  ctx.lineTo(cx + 560, 1780); ctx.lineTo(cx - 1000, 1780)
+  ctx.closePath(); ctx.fill()
+  // brighter inner core
+  ctx.fillStyle = 'rgba(255,246,205,0.12)'
+  ctx.beginPath()
+  ctx.moveTo(cx - 250, 0); ctx.lineTo(cx + 250, 0)
+  ctx.lineTo(cx + 300, 1620); ctx.lineTo(cx - 640, 1620)
+  ctx.closePath(); ctx.fill()
+}
+
 export function drawTable(ctx: Ctx, cam: CameraState, canvas: HTMLCanvasElement, _t: number): void {
   ctx.save()
   ctx.setTransform(cam.zoom, 0, 0, cam.zoom,
@@ -179,6 +196,14 @@ export function drawTable(ctx: Ctx, cam: CameraState, canvas: HTMLCanvasElement,
 
   // the oval rug, laid on the boards under the title
   drawRug(ctx)
+
+  // the room reads calmer inside — a gentle ambient mute across the floor, then a
+  // warm sunbeam from the window as the bright spot (clipped to the floor)
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, world.width, world.height); ctx.clip()
+  ctx.fillStyle = 'rgba(30,22,10,0.09)'
+  ctx.fillRect(0, 0, world.width, world.height)
+  drawSunbeam(ctx)
+  ctx.restore()
 
   ctx.restore()
 }
