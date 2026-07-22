@@ -22,6 +22,12 @@ import { createMail } from './mail'
 import type { MailGame } from './mail'
 import { initContactCard } from '../../ui/contactCard'
 import { createCards } from './cards'
+import { createBed } from './bed'
+import { createDesk } from './desk'
+import { createBookshelf } from './bookshelf'
+import { createDresser } from './dresser'
+import { createToyChest } from './toychest'
+import { createPlant } from './plant'
 // Dominoes are parked for now — module kept, re-register to bring them back.
 // import { createDominoes } from './dominoes'
 
@@ -34,23 +40,31 @@ export function createGames(): TableGame[] {
   // the envelope opens the contact card; dismissing the card closes the envelope
   let mail: MailGame | null = null
   const card = initContactCard(() => mail?.close())
-  mail = createMail(3050, 1690, () => card.show(), () => card.hide())
+  mail = createMail(3750, 2630, () => card.show(), () => card.hide())
   return [
+    // bedroom furniture — drawn FIRST so every game piece sits on top of it;
+    // hit-testing runs in reverse, so games and props win contested presses
+    createBed(6050, 2350),
+    createDesk(2900, 4350),
+    createBookshelf(4700, 210),
+    createDresser(250, 1500),
+    createToyChest(800, 4260),
+    createPlant(6330, 320),
     mail,
-    createChess(1000, 1050),
-    createScrabble(1450, 2650),
-    createShuffleboard(3400, 1800),
-    createCards(4300, 1100),
-    createDice(2650, 2700),
-    createSpinner(4300, 2750),
-    createTop(3550, 950),
-    createTop(1500, 1700, GOLD),
-    createTeeth(4250, 1900),
-    createNotes(2250, 2050),
-    createEasyButton(4700, 3250),
-    createBackgammon(3500, 3150),
-    createIpad(4650, 650),
-    // createSandbox(820, 3020), // parked — hidden for now
+    createChess(1700, 1990),
+    createScrabble(2150, 3590),
+    createShuffleboard(4100, 2740),
+    createCards(5000, 2040),
+    createDice(3350, 3640),
+    createSpinner(5000, 3690),
+    createTop(4250, 1890),
+    createTop(2200, 2640, GOLD),
+    createTeeth(4950, 2840),
+    createNotes(2950, 2990),
+    createEasyButton(5400, 4190),
+    createBackgammon(4200, 4090),
+    createIpad(5350, 1590),
+    // createSandbox(1520, 3960), // parked — hidden for now
     // createSoccer(), // parked — bring back when the table's bigger
     createHotwheels(),
     // ambient cloud/bird shadows — draws only in drawAbove, so it shades every
@@ -58,7 +72,7 @@ export function createGames(): TableGame[] {
     createOverhead(),
     createBlocks(), // the hero title — drawn last, always on top of other games
     createFly(), createFly(), // a couple of ambient houseflies (more reads as "dirty")
-    // createSwatter(2100, 1550), // parked — grab it and whack them
+    // createSwatter(2800, 2490), // parked — grab it and whack them
     // magnifier LAST so its lens covers the flies (and magnifies them — try it)
     createMagnifier(3000, 2350),
   ]

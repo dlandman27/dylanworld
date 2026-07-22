@@ -271,61 +271,141 @@ function drawOutlet(ctx: Ctx, P: (t: number, s: number) => V, tc: number, sc: nu
   }
 }
 
-/** A six-panel door: recessed panels with real reveal faces, and a casing that
- * projects off the wall toward the room (inx/iny = the wall's inward direction). */
-function drawDoor(ctx: Ctx, P: (t: number, s: number) => V, inx: number, iny: number): void {
-  const dt0 = 0.13, dt1 = 0.29, s0 = 0.0, s1 = 0.72
-  const dw = dt1 - dt0, dh = s1 - s0
-  const fillQ = (ta: number, tb: number, sa: number, sb: number, col: string): void => { quad(ctx, P(ta, sa), P(tb, sa), P(tb, sb), P(ta, sb)); ctx.fillStyle = col; ctx.fill() }
-  const inkQ = (ta: number, tb: number, sa: number, sb: number, lw: number): void => { quad(ctx, P(ta, sa), P(tb, sa), P(tb, sb), P(ta, sb)); ctx.strokeStyle = INK; ctx.lineWidth = lw; ctx.stroke() }
-  const push = (p: V, d: number): V => ({ x: p.x + inx * d, y: p.y + iny * d })
-  const ft = dw * 0.12, fs = dh * 0.02, CD = 34   // casing width + projection depth
-
-  // cast shadow on the wall (offset down-right)
-  const so = (ta: number, sa: number): V => { const p = P(ta, sa); return { x: p.x + 10, y: p.y + 11 } }
-  quad(ctx, so(dt0 - ft, s0), so(dt1 + ft, s0), so(dt1 + ft, s1 + fs), so(dt0 - ft, s1 + fs)); ctx.fillStyle = 'rgba(32,26,23,0.12)'; ctx.fill()
-
-  // door slab (recessed at the wall plane) + six recessed panels
-  fillQ(dt0, dt1, s0, s1, '#e9ebee')
-  const px0 = dt0 + dw * 0.15, px1 = dt1 - dw * 0.15, ps0 = s0 + dh * 0.05, ps1 = s1 - dh * 0.045
-  const gT = dw * 0.08, gS = dh * 0.024
-  for (let c = 0; c < 2; c++) for (let r = 0; r < 3; r++) {
-    const a0 = px0 + (px1 - px0) * (c / 2) + gT / 2, a1 = px0 + (px1 - px0) * ((c + 1) / 2) - gT / 2
-    const b0 = ps0 + (ps1 - ps0) * (r / 3) + gS / 2, b1 = ps0 + (ps1 - ps0) * ((r + 1) / 3) - gS / 2
-    const ia = (a1 - a0) * 0.17, ib = (b1 - b0) * 0.13
-    const i0 = a0 + ia, i1 = a1 - ia, j0 = b0 + ib, j1 = b1 - ib
-    fillQ(a0, a1, j1, b1, '#ccd1d6')   // top reveal (shadow)
-    fillQ(a0, i0, b0, b1, '#d2d7dc')   // left reveal (shadow)
-    fillQ(a0, a1, b0, j0, '#fbfcfd')   // bottom reveal (light)
-    fillQ(i1, a1, b0, b1, '#f3f5f7')   // right reveal (light)
-    fillQ(i0, i1, j0, j1, '#e3e6e9')   // sunken panel face
-    inkQ(i0, i1, j0, j1, 1.5); inkQ(a0, a1, b0, b1, 1.8)
+/** A paneled door — built exactly the way the window is: a doorway RECESSED
+ * into the wall's thickness. Flat built-up casing on the wall, jamb reveals
+ * converging to a single vanishing point high inside the opening, the slab set
+ * back on the recessed plane, and a threshold well at the floor. */
+function drawDoor(ctx: Ctx, P: (t: number, s: number) => V, dt0: number, dt1: number): void {
+  const s0 = 0.0, s1 = 0.78
+  const ft = (dt1 - dt0) * 0.17, fs = (s1 - s0) * 0.055   // casing scales with the door
+  const lp2 = (p: V, q: V, f: number): V => ({ x: p.x + (q.x - p.x) * f, y: p.y + (q.y - p.y) * f })
+  const poly = (pts: V[], col: string): void => {
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+    ctx.closePath(); ctx.fillStyle = col; ctx.fill()
+  }
+  const inkPoly = (pts: V[], col: string, lw: number): void => {
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+    ctx.closePath(); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke()
+  }
+  const line = (a: V, b: V, col: string, lw: number): void => {
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
+  }
+  const fillQ = (ta: number, tb: number, sa: number, sb: number, col: string): void => {
+    quad(ctx, P(ta, sa), P(tb, sa), P(tb, sb), P(ta, sb)); ctx.fillStyle = col; ctx.fill()
+  }
+  const bevel = (ta: number, tb: number, sa: number, sb: number): void => {
+    const A = P(ta, sa), B = P(tb, sa), C = P(tb, sb), Dd = P(ta, sb)
+    line(Dd, C, 'rgba(255,255,255,0.85)', 2.5)
+    line(A, Dd, 'rgba(255,255,255,0.65)', 2.5)
+    line(A, B, 'rgba(120,130,142,0.5)', 2.5)
+    line(B, C, 'rgba(120,130,142,0.4)', 2.5)
   }
 
-  // brass knob + a soft shadow on the door
-  const knS = s0 + dh * 0.42, kc = P(dt1 - dw * 0.12, knS)
-  const kr = Math.hypot(P(dt1, knS).x - P(dt0, knS).x, P(dt1, knS).y - P(dt0, knS).y) * 0.07
-  ctx.fillStyle = 'rgba(32,26,23,0.18)'; ctx.beginPath(); ctx.ellipse(kc.x + kr * 0.4, kc.y + kr * 0.5, kr * 1.4, kr * 1.1, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.fillStyle = '#cbd0d5'; ctx.beginPath(); ctx.arc(kc.x, kc.y, kr * 1.4, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke()
-  ctx.fillStyle = '#e9c96c'; ctx.beginPath(); ctx.arc(kc.x, kc.y, kr, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = 2.2; ctx.stroke()
-  ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.beginPath(); ctx.arc(kc.x - kr * 0.3, kc.y - kr * 0.3, kr * 0.34, 0, Math.PI * 2); ctx.fill()
+  // front opening corners (B = floor seam, T = head) + the vanishing point
+  const FBL = P(dt0, s0), FBR = P(dt1, s0), FTL = P(dt0, s1), FTR = P(dt1, s1)
+  const VP = lp2(lp2(FBL, FBR, 0.5), lp2(FTL, FTR, 0.5), 0.85)
+  const rec = 0.085                                       // a door sits shallow in its jamb
+  const DBL = lp2(FBL, VP, rec), DBR = lp2(FBR, VP, rec), DTL = lp2(FTL, VP, rec), DTR = lp2(FTR, VP, rec)
+  const dpt = (u: number, v: number): V => lp2(lp2(DBL, DBR, u), lp2(DTL, DTR, u), v)  // u 0→1 hinge→latch, v 0 floor →1 head
 
-  // ---- projecting casing: a frame that stands off the wall toward the room ----
-  const oTL = P(dt0 - ft, s1 + fs), oTR = P(dt1 + ft, s1 + fs), oBL = P(dt0 - ft, s0), oBR = P(dt1 + ft, s0)
-  const iTL = P(dt0, s1), iTR = P(dt1, s1), iBL = P(dt0, s0), iBR = P(dt1, s0)
-  // inner return (the reveal from the door back out to the casing front) — shaded jambs
-  quad(ctx, iTL, iTR, push(iTR, CD), push(iTL, CD)); ctx.fillStyle = '#c5cbd1'; ctx.fill()   // head jamb (shadow)
-  quad(ctx, iTL, iBL, push(iBL, CD), push(iTL, CD)); ctx.fillStyle = '#d6dbe0'; ctx.fill()   // hinge-side jamb (lit)
-  quad(ctx, iTR, iBR, push(iBR, CD), push(iTR, CD)); ctx.fillStyle = '#bcc2c8'; ctx.fill()   // latch-side jamb (shadow)
-  // casing front frame (pushed toward the room), three bars — top / left / right
-  const pOTL = push(oTL, CD), pOTR = push(oTR, CD), pOBL = push(oBL, CD), pOBR = push(oBR, CD)
-  const pITL = push(iTL, CD), pITR = push(iTR, CD), pIBL = push(iBL, CD), pIBR = push(iBR, CD)
-  ctx.fillStyle = '#f6f7f8'; quad(ctx, pOTL, pOTR, pITR, pITL); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke()   // top
-  ctx.fillStyle = '#f6f7f8'; quad(ctx, pOTL, pITL, pIBL, pOBL); ctx.fill(); ctx.stroke()                                            // left
-  ctx.fillStyle = '#edf0f2'; quad(ctx, pOTR, pITR, pIBR, pOBR); ctx.fill(); ctx.stroke()                                            // right
-  // outer sides of the casing (its thickness from the wall out to the front) — shaded
-  ctx.fillStyle = '#b7bdc3'; quad(ctx, oTR, pOTR, pOBR, oBR); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke()     // latch-side outer
-  ctx.fillStyle = '#c3c9cf'; quad(ctx, oTL, oTR, pOTR, pOTL); ctx.fill(); ctx.stroke()                                              // top outer
+  // cast shadow on the wall (offset down-right) — lifts the casing off the wall
+  const so = (ta: number, sa: number): V => { const p = P(ta, sa); return { x: p.x + 10, y: p.y + 11 } }
+  quad(ctx, so(dt0 - ft, s0), so(dt1 + ft, s0), so(dt1 + ft, s1 + fs), so(dt0 - ft, s1 + fs))
+  ctx.fillStyle = 'rgba(32,26,23,0.12)'; ctx.fill()
+
+  // built-up casing FLAT on the wall (like the window): outer board + inner band
+  fillQ(dt0 - ft, dt1 + ft, s0, s1 + fs, SASH)
+  bevel(dt0 - ft, dt1 + ft, s0, s1 + fs)
+  fillQ(dt0 - ft * 0.5, dt1 + ft * 0.5, s0, s1 + fs * 0.5, '#e6e9ec')
+  bevel(dt0 - ft * 0.5, dt1 + ft * 0.5, s0, s1 + fs * 0.5)
+
+  // ---- REVEAL: the four inside faces of the doorway, converging to the VP.
+  // NOTE this door hangs on the BOTTOM wall, which folds down-screen — so shading
+  // follows SCREEN light (upper-left), not wall space, or the recess reads flipped.
+  poly([FTL, FTR, DTR, DTL], JAMB_LIT)     // head (screen-bottom face → catches light)
+  poly([FBL, FTL, DTL, DBL], JAMB_LIT)     // hinge-side jamb
+  poly([FBR, FTR, DTR, DBR], '#c9cfd5')    // latch-side jamb (shaded)
+  poly([FBL, FBR, DBR, DBL], '#9a7747')    // threshold well: worn wood (screen-top face → in shade)
+  line(lp2(FBL, DBL, 0.55), lp2(FBR, DBR, 0.55), 'rgba(74,48,22,0.4)', 2.5)  // threshold seam
+
+  // ---- the slab, set back on the recessed plane ----
+  poly([DBL, DBR, DTR, DTL], '#e9ebee')
+  // six recessed panels, each with real reveal faces (light from the head side)
+  const u0 = 0.15, u1 = 0.85, v0 = 0.075, v1 = 0.94
+  const gU = 0.07, gV = 0.028
+  for (let c = 0; c < 2; c++) for (let r = 0; r < 3; r++) {
+    const a0 = u0 + (u1 - u0) * (c / 2) + gU / 2, a1 = u0 + (u1 - u0) * ((c + 1) / 2) - gU / 2
+    const b0 = v0 + (v1 - v0) * (r / 3) + gV / 2, b1 = v0 + (v1 - v0) * ((r + 1) / 3) - gV / 2
+    const ia = (a1 - a0) * 0.16, ib = (b1 - b0) * 0.12
+    const i0 = a0 + ia, i1 = a1 - ia, j0 = b0 + ib, j1 = b1 - ib
+    poly([dpt(a0, b1), dpt(a1, b1), dpt(i1, j1), dpt(i0, j1)], '#fbfcfd')   // head-side reveal (screen-bottom → light)
+    poly([dpt(a0, b0), dpt(a0, b1), dpt(i0, j1), dpt(i0, j0)], '#d2d7dc')   // hinge-side reveal
+    poly([dpt(a0, b0), dpt(a1, b0), dpt(i1, j0), dpt(i0, j0)], '#ccd1d6')   // floor-side reveal (screen-top → shadow)
+    poly([dpt(a1, b0), dpt(a1, b1), dpt(i1, j1), dpt(i1, j0)], '#f3f5f7')   // latch-side reveal (light)
+    poly([dpt(i0, j0), dpt(i1, j0), dpt(i1, j1), dpt(i0, j1)], '#e3e6e9')   // sunken face
+    inkPoly([dpt(i0, j0), dpt(i1, j0), dpt(i1, j1), dpt(i0, j1)], INK, 1.5)
+    inkPoly([dpt(a0, b0), dpt(a1, b0), dpt(a1, b1), dpt(a0, b1)], INK, 1.8)
+  }
+
+  // hinges on the hinge side: three steel knuckles peeking past the jamb
+  const doorW = Math.hypot(DBR.x - DBL.x, DBR.y - DBL.y)
+  for (const hv of [0.16, 0.5, 0.84]) {
+    const h0 = dpt(0.015, hv - 0.035), h1 = dpt(0.015, hv + 0.035)
+    const h2 = dpt(0.055, hv + 0.035), h3 = dpt(0.055, hv - 0.035)
+    poly([h0, h1, h2, h3], '#c9ced3')
+    inkPoly([h0, h1, h2, h3], INK, 1.8)
+  }
+
+  // brass knob on the latch side: slim rosette plate, a knob with a crescent
+  // shade (the sanctioned metal treatment) and a keyhole. The whole assembly is
+  // drawn in the DOOR'S local frame (rotated with the fold), like the panels —
+  // a screen-upright lock on a leaning door reads pasted-on.
+  const kc = dpt(0.92, 0.46)
+  const kr = doorW * 0.042
+  const va = dpt(0.92, 0.4), vb = dpt(0.92, 0.52)
+  const doorAng = Math.atan2(vb.y - va.y, vb.x - va.x)   // direction of increasing v (floor → head)
+  ctx.save()
+  ctx.translate(kc.x, kc.y)
+  ctx.rotate(doorAng - Math.PI / 2)
+  // local frame: +y runs toward the door's head, -y toward its floor end
+  // cast shadow on the slab
+  ctx.fillStyle = 'rgba(32,26,23,0.18)'
+  ctx.beginPath(); ctx.ellipse(kr * 0.5, kr * 0.6, kr * 1.35, kr * 1.05, 0, 0, Math.PI * 2); ctx.fill()
+  // rosette backplate — extends toward the floor end, where the keyhole lives
+  ctx.fillStyle = '#cbd0d5'
+  ctx.beginPath(); ctx.ellipse(0, -kr * 0.55, kr * 1.3, kr * 2.1, 0, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke()
+  // keyhole: circle nearest the knob, wedge flaring toward the floor end
+  const ky = -kr * 1.9
+  ctx.fillStyle = INK
+  ctx.beginPath(); ctx.arc(0, ky, kr * 0.22, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.moveTo(-kr * 0.14, ky); ctx.lineTo(kr * 0.14, ky); ctx.lineTo(kr * 0.26, ky - kr * 0.55); ctx.lineTo(-kr * 0.26, ky - kr * 0.55); ctx.closePath(); ctx.fill()
+  // the knob: flat brass disc + crescent shadow for the turned-metal read
+  ctx.fillStyle = '#e9c96c'
+  ctx.beginPath(); ctx.arc(0, 0, kr, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.stroke()
+  ctx.fillStyle = 'rgba(32,26,23,0.16)'
+  ctx.beginPath()
+  ctx.arc(0, 0, kr * 0.92, 0, Math.PI * 2)
+  ctx.arc(-kr * 0.18, -kr * 0.2, kr * 0.86, 0, Math.PI * 2, true)
+  ctx.fill()
+  // collar ring + glint
+  ctx.strokeStyle = 'rgba(120,90,20,0.5)'; ctx.lineWidth = 1.6
+  ctx.beginPath(); ctx.arc(0, 0, kr * 0.55, 0, Math.PI * 2); ctx.stroke()
+  ctx.fillStyle = 'rgba(255,255,255,0.8)'
+  ctx.beginPath(); ctx.ellipse(-kr * 0.32, -kr * 0.36, kr * 0.26, kr * 0.15, -0.6, 0, Math.PI * 2); ctx.fill()
+  ctx.restore()
+
+  // ambient occlusion where the slab meets the jambs + crisp edges
+  inkPoly([DBL, DBR, DTR, DTL], 'rgba(20,26,32,0.3)', 5)
+  inkPoly([DBL, DBR, DTR, DTL], INK, 2.5)
+  inkPoly([FBL, FBR, FTR, FTL], INK, 3.5)
+  quad(ctx, P(dt0 - ft, s0), P(dt1 + ft, s0), P(dt1 + ft, s1 + fs), P(dt0 - ft, s1 + fs))
+  ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke()
+  // (no crown cap here — on the fold-down bottom wall it lands at the door's
+  // screen-bottom and reads upside down; the plain casing stays symmetric)
 }
 
 /** One folded wall: floor edge p0→p1, splayed outer edge q0→q1 (trapezoid). */
@@ -406,7 +486,14 @@ function drawWall(ctx: Ctx, p0: V, p1: V, q0: V, q1: V, seed: number, withWindow
 
   // pennant bunting strung across the sky, then the window
   if (withBunting) drawBunting(ctx, P)
-  if (withDoor) { drawDoor(ctx, P, inx, iny); drawSwitch(ctx, P, 0.345, 0.46); drawOutlet(ctx, P, 0.46, 0.14) }
+  // the door hangs on the BOTTOM wall near its left corner (t runs C→E, so
+  // high t = screen-left). ~580 world units wide — a door, not a garage.
+  if (withDoor) {
+    const dw = 460 / len
+    drawDoor(ctx, P, 0.79 - dw, 0.79)
+    drawSwitch(ctx, P, 0.79 + 0.035, 0.46)   // knob side of the door
+    drawOutlet(ctx, P, 0.45, 0.14)
+  }
   if (withWindow) drawWindow(ctx, P, upAngle)
 
   ctx.restore()
@@ -428,8 +515,8 @@ export function drawWalls(ctx: Ctx, _cam: CameraState, _canvas: HTMLCanvasElemen
 
   drawWall(ctx, A, B, Ao, Bo, 1, true, true)  // top (window + bunting)
   drawWall(ctx, B, C, Bo, Co, 2)  // right
-  drawWall(ctx, C, E, Co, Eo, 3)  // bottom
-  drawWall(ctx, E, A, Eo, Ao, 4, false, false, true)  // left (door + fixtures)
+  drawWall(ctx, C, E, Co, Eo, 3, false, false, true)  // bottom (door + fixtures, near the left corner)
+  drawWall(ctx, E, A, Eo, Ao, 4)  // left
 
   // fold creases at the corners, so the box read is unmistakable
   ctx.strokeStyle = 'rgba(32,26,23,0.22)'; ctx.lineWidth = 3

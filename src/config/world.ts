@@ -1,9 +1,12 @@
 import type { WorldConfig } from '../types'
 
+// The room grew 5200×3600 → 6600×4600 for the bedroom furniture (bed, desk,
+// dresser…). Everything shifted +700x +940y so the rug (keyed to spawn) sits at
+// the exact center of the new floor.
 export const world: WorldConfig = {
-  width: 5200,
-  height: 3600,
-  spawn: { x: 2600, y: 1800 },
+  width: 6600,
+  height: 4600,
+  spawn: { x: 3300, y: 2740 },
   name: "DYLAN'S WORLD",
   landmarks: [
     // Project District — north-east quarter
@@ -33,13 +36,13 @@ export const world: WorldConfig = {
   ],
   props: [
     // marbles strewn across the table, grabbable/flingable
-    { kind: 'pebble', x: 2600, y: 1800, count: 30, spread: 2100 },
-    { kind: 'ball', x: 2000, y: 1200, count: 1, spread: 0 },
+    { kind: 'pebble', x: 3300, y: 2740, count: 30, spread: 2100 },
+    { kind: 'ball', x: 2700, y: 2140, count: 1, spread: 0 },
     // loose change: a spilled pocket near the cards + strays everywhere
-    { kind: 'coin', x: 3900, y: 1500, count: 7, spread: 260 },
-    { kind: 'coin', x: 2600, y: 1800, count: 8, spread: 2000 },
+    { kind: 'coin', x: 4600, y: 2440, count: 7, spread: 260 },
+    { kind: 'coin', x: 3300, y: 2740, count: 8, spread: 2000 },
     // poker chips by the cards — somebody's mid-hand
-    { kind: 'chip', x: 4150, y: 1350, count: 10, spread: 150 },
-    { kind: 'chip', x: 4520, y: 1330, count: 5, spread: 90 },
+    { kind: 'chip', x: 4850, y: 2290, count: 10, spread: 150 },
+    { kind: 'chip', x: 5220, y: 2270, count: 5, spread: 90 },
   ],
 }

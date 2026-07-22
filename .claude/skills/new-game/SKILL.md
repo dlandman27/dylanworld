@@ -81,13 +81,18 @@ rule set. Summary below; the skill is authoritative.
 - Settled pieces sit slightly askew (small random home offsets + resting tilts),
   never machine-gridded.
 
-## Placement on the table (world 5200×3600)
+## Placement on the table (world 6600×4600 — the room grew for the furniture)
 
-Currently occupied (centers): chess (1000,1050), scrabble (1450,2650),
-shuffleboard (3400,1800), cards (4300,1100), dice (2650,2700), spinner
-(4300,2750), title blocks (~2600,1240 zone — keep clear), marbles scattered.
-Parked: dominoes (module exists, unregistered). Pick an open spot, mention it,
-and keep ~150px breathing room from neighbours.
+Currently occupied (centers): chess (1700,1990), scrabble (2150,3590),
+shuffleboard (4100,2740), cards (5000,2040), dice (3350,3640), spinner
+(5000,3690), backgammon (4200,4090), teeth (4950,2840), notes (2950,2990),
+easy button (5400,4190), iPad (5350,1590), racetrack (~1400,1360), title
+blocks (~3300,2180 zone — keep clear), rug center (3300,2300), marbles
+scattered. Furniture on the perimeter: bed (6050,2350), desk (2900,4350),
+bookshelf (4700,210), dresser (250,1500), toy chest (800,4260), plant
+(6330,320); the door is on the bottom wall near the left corner. Parked:
+dominoes (module exists, unregistered). Pick an open spot, mention it, and
+keep ~150px breathing room from neighbours.
 
 ## Process
 

@@ -9,8 +9,8 @@ import { INK } from './shared'
 // again to hop out. The whole table is road: plow marbles, clip blocks, leave
 // skid marks. The camera follows whichever car you're driving (driveTarget).
 
-const TRACK_CX = 700
-const TRACK_CY = 420
+const TRACK_CX = 1400
+const TRACK_CY = 1360
 const TRACK_A = 500      // circuit x half-extent
 const TRACK_B = 270      // circuit y half-extent
 const TRACK_W = 92       // asphalt width — wide enough to actually race on
