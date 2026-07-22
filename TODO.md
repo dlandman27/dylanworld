@@ -25,3 +25,5 @@ Host a table, friends join via room link (`?room=XXXX`), play together.
       the live site in a framed modal
 - [ ] Knuckles ring (marble game with a goal — first "winnable" toy)
 - [ ] Dominoes: re-register when a spot opens up
+- [ ] Pennant bunting (triangle flag garland) strung across a wall — house palette,
+      ink outlines, soft shadow, drawn in the wall's perspective (like the window)

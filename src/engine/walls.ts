@@ -235,6 +235,16 @@ function drawWall(ctx: Ctx, p0: V, p1: V, q0: V, q1: V, seed: number, withWindow
     const a = Pw(gi / grooves, 0.02), b = Pw(gi / grooves, sW * 0.97)
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
   }
+  // faint wood grain — the wainscot is painted wood, so subtle vertical streaks
+  ctx.lineWidth = 1.4
+  const gn = Math.max(6, Math.round(len / 62))
+  for (let gi = 0; gi < gn; gi++) {
+    const gt = (gi + 0.5) / gn
+    const bow = (rnd(gi + seed, 17) - 0.5) * 0.007
+    const a = Pw(gt, 0.03), m = Pw(gt + bow, sW * 0.5), b = Pw(gt, sW * 0.96)
+    ctx.strokeStyle = `rgba(120,122,132,${0.04 + rnd(gi, seed * 3) * 0.05})`
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(m.x, m.y, b.x, b.y); ctx.stroke()
+  }
   // crisp top edge of the slab front + a thin highlight
   ctx.strokeStyle = INK; ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(Pw(0, sW).x, Pw(0, sW).y); ctx.lineTo(Pw(1, sW).x, Pw(1, sW).y); ctx.stroke()
