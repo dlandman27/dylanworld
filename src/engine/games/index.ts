@@ -57,7 +57,7 @@ export function createGames(): TableGame[] {
     // game and prop; placed after the tops so shadows fall on standing pieces too
     createOverhead(),
     createBlocks(), // the hero title — drawn last, always on top of other games
-    createFly(), createFly(), createFly(), createFly(), createFly(), createFly(), // ambient houseflies
+    createFly(), createFly(), // a couple of ambient houseflies (more reads as "dirty")
     // createSwatter(2100, 1550), // parked — grab it and whack them
     // magnifier LAST so its lens covers the flies (and magnifies them — try it)
     createMagnifier(3000, 2350),

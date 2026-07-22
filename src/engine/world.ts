@@ -15,16 +15,20 @@ export function createCamera(): CameraState {
   }
 }
 
-/** Keep the view on the paper; if the paper is smaller than the viewport, center it. */
+// how far past the floor edge you can pan — reveals the wainscot + wall, then
+// stops, so dragging into the edge feels like hitting the wall of the room.
+const EDGE = 600
+
+/** Keep the view on the room; if the floor is smaller than the viewport, center it. */
 function clampCamera(cam: CameraState, canvas: HTMLCanvasElement): void {
   const viewW = canvas.width / cam.zoom
   const viewH = canvas.height / cam.zoom
   cam.pos.x = world.width <= viewW
     ? world.width / 2
-    : Math.min(Math.max(cam.pos.x, viewW / 2), world.width - viewW / 2)
+    : Math.min(Math.max(cam.pos.x, viewW / 2 - EDGE), world.width - viewW / 2 + EDGE)
   cam.pos.y = world.height <= viewH
     ? world.height / 2
-    : Math.min(Math.max(cam.pos.y, viewH / 2), world.height - viewH / 2)
+    : Math.min(Math.max(cam.pos.y, viewH / 2 - EDGE), world.height - viewH / 2 + EDGE)
 }
 
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
