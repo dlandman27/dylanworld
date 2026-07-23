@@ -238,6 +238,240 @@ function wpt(P: (t: number, s: number) => V, tc: number, sc: number, sx: number,
   return { x: c.x + ax * sx + ux * sy, y: c.y + ay * sx + uy * sy }
 }
 
+/** Local fixture frame at (tc, sc): maps (sx, sy) in world units — sx along the
+ * wall, sy UP the wall. Fixtures follow the wall's fold on every wall (the
+ * clouds' rule) — on the bottom wall art hangs with its top toward the wall
+ * top, exactly like everything else there. */
+function fixtureFrame(P: (t: number, s: number) => V, tc: number, sc: number): (sx: number, sy: number) => V {
+  const c = P(tc, sc)
+  const a = P(tc + 0.006, sc), b = P(tc - 0.006, sc)
+  let ax = a.x - b.x, ay = a.y - b.y; let l = Math.hypot(ax, ay) || 1; ax /= l; ay /= l
+  const u1 = P(tc, sc + 0.008), u2 = P(tc, sc - 0.008)
+  let ux = u1.x - u2.x, uy = u1.y - u2.y; l = Math.hypot(ux, uy) || 1; ux /= l; uy /= l
+  return (sx, sy) => ({ x: c.x + ax * sx + ux * sy, y: c.y + ay * sx + uy * sy })
+}
+
+// crayon palette for the kid drawings — house accents only
+const CRAYON = {
+  coral: theme.colors.coral, sky: theme.colors.sky, lime: theme.colors.lime,
+  orange: theme.colors.orange, purple: theme.colors.purple, gold: '#f7c948',
+  teal: theme.colors.teal, pink: theme.colors.pink,
+}
+
+type DoodleKind = 'rocket' | 'sun' | 'dog' | 'house' | 'heart' | 'star' | 'family'
+
+/** A kid's crayon drawing on a paper scrap taped to the wall. Drawn through the
+ * fixture frame so it hangs flat on the wall plane (paper IS flat — its depth
+ * cues are the cast shadow and the tape). */
+function drawDoodle(ctx: Ctx, P: (t: number, s: number) => V, tc: number, sc: number, kind: DoodleKind, seed: number): void {
+  const w0 = fixtureFrame(P, tc, sc)
+  const tilt = (rnd(seed, 31) - 0.5) * 0.14
+  const cosT = Math.cos(tilt), sinT = Math.sin(tilt)
+  // paper local coords: x right, y UP (mapped to up-the-wall), slight tilt
+  const w = (sx: number, sy: number): V => w0(sx * cosT - sy * sinT, sx * sinT + sy * cosT)
+  const PW2 = 96, PH2 = 114
+  const quadW = (a: V, b: V, c: V, d: V, col: string): void => { quad(ctx, a, b, c, d); ctx.fillStyle = col; ctx.fill() }
+
+  // cast shadow (screen-space offset), then the paper
+  const sh = (p: V): V => ({ x: p.x + 6, y: p.y + 8 })
+  quadW(sh(w(-PW2, PH2)), sh(w(PW2, PH2)), sh(w(PW2, -PH2)), sh(w(-PW2, -PH2)), 'rgba(32,26,23,0.14)')
+  quadW(w(-PW2, PH2), w(PW2, PH2), w(PW2, -PH2), w(-PW2, -PH2), '#fefaf0')
+  quad(ctx, w(-PW2, PH2), w(PW2, PH2), w(PW2, -PH2), w(-PW2, -PH2))
+  ctx.strokeStyle = 'rgba(32,26,23,0.5)'; ctx.lineWidth = 2; ctx.stroke()
+
+  // a wobbly crayon stroke through local points
+  const stroke = (pts: Array<[number, number]>, col: string, lw = 7): void => {
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    ctx.beginPath()
+    pts.forEach(([x, y], i) => {
+      const jx = (rnd(seed + i, 7) - 0.5) * 5, jy = (rnd(seed + i, 13) - 0.5) * 5
+      const p = w(x + jx, y + jy)
+      if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y)
+    })
+    ctx.stroke()
+  }
+  const ring = (cx: number, cy: number, r: number, col: string, lw = 7): void => {
+    const pts: Array<[number, number]> = []
+    for (let i = 0; i <= 12; i++) { const a2 = (i / 12) * Math.PI * 2; pts.push([cx + Math.cos(a2) * r, cy + Math.sin(a2) * r]) }
+    stroke(pts, col, lw)
+  }
+
+  if (kind === 'rocket') {
+    stroke([[-22, -60], [-22, 30], [0, 62], [22, 30], [22, -60], [-22, -60]], CRAYON.coral)
+    ring(0, 14, 14, CRAYON.sky, 6)
+    stroke([[-22, -60], [-40, -84]], CRAYON.orange); stroke([[22, -60], [40, -84]], CRAYON.orange)
+    stroke([[-10, -64], [-14, -88]], CRAYON.gold, 6); stroke([[8, -64], [10, -90]], CRAYON.gold, 6)
+  } else if (kind === 'sun') {
+    ring(30, 52, 26, CRAYON.gold, 8)
+    for (let i = 0; i < 7; i++) {
+      const a2 = (i / 7) * Math.PI * 2
+      stroke([[30 + Math.cos(a2) * 34, 52 + Math.sin(a2) * 34], [30 + Math.cos(a2) * 52, 52 + Math.sin(a2) * 52]], CRAYON.gold, 6)
+    }
+    stroke([[-80, -70], [-40, -66], [0, -72], [40, -66], [80, -72]], CRAYON.lime, 8)  // grass
+    stroke([[-60, -30], [-40, -8], [-20, -26]], CRAYON.sky, 6)                       // a bird
+  } else if (kind === 'dog') {
+    stroke([[-50, -40], [50, -40], [50, 10], [-50, 10], [-50, -40]], CRAYON.orange)  // body
+    stroke([[50, 10], [50, 44], [76, 44], [76, 2]], CRAYON.orange)                   // head
+    stroke([[58, 44], [56, 60]], CRAYON.orange, 6); stroke([[72, 44], [74, 60]], CRAYON.orange, 6)  // ears
+    for (const lx of [-42, -16, 14, 40]) stroke([[lx, -40], [lx, -66]], CRAYON.orange, 6)           // legs
+    stroke([[-50, 4], [-72, 24]], CRAYON.orange, 6)                                  // tail
+    ring(66, 26, 3, CRAYON.purple, 4)                                                // eye
+  } else if (kind === 'house') {
+    stroke([[-48, -60], [-48, 10], [48, 10], [48, -60], [-48, -60]], CRAYON.purple)
+    stroke([[-58, 10], [0, 62], [58, 10]], CRAYON.coral)
+    stroke([[-10, -60], [-10, -22], [16, -22], [16, -60]], CRAYON.teal, 6)           // door
+    ring(-28, -8, 9, CRAYON.sky, 5)                                                  // window
+    stroke([[30, 34], [30, 56], [26, 66], [34, 74]], CRAYON.sky, 5)                  // chimney smoke
+  } else if (kind === 'heart') {
+    stroke([[0, -50], [-46, 10], [-30, 44], [0, 26], [30, 44], [46, 10], [0, -50]], CRAYON.pink, 9)
+    stroke([[-14, 6], [-6, 14]], '#fefaf0', 5)
+  } else if (kind === 'star') {
+    const pts: Array<[number, number]> = []
+    for (let i = 0; i <= 10; i++) {
+      const r = i % 2 === 0 ? 56 : 24
+      const a2 = Math.PI / 2 + (i / 10) * Math.PI * 2
+      pts.push([Math.cos(a2) * r, Math.sin(a2) * r])
+    }
+    stroke(pts, CRAYON.gold, 8)
+    ring(0, 0, 6, CRAYON.coral, 5)
+  } else {
+    // family: two stick figures, one tall one small, holding hands
+    ring(-28, 40, 14, CRAYON.sky, 6)
+    stroke([[-28, 26], [-28, -30]], CRAYON.sky, 6)
+    stroke([[-28, 8], [-6, -4]], CRAYON.sky, 6); stroke([[-28, 8], [-50, -4]], CRAYON.sky, 6)
+    stroke([[-28, -30], [-42, -64]], CRAYON.sky, 6); stroke([[-28, -30], [-14, -64]], CRAYON.sky, 6)
+    ring(30, 16, 11, CRAYON.coral, 6)
+    stroke([[30, 5], [30, -34]], CRAYON.coral, 6)
+    stroke([[30, -10], [12, -18]], CRAYON.coral, 6); stroke([[30, -10], [48, -18]], CRAYON.coral, 6)
+    stroke([[30, -34], [20, -62]], CRAYON.coral, 6); stroke([[30, -34], [40, -62]], CRAYON.coral, 6)
+    stroke([[-6, -4], [12, -18]], CRAYON.purple, 5)   // the held hands
+  }
+
+  // tape: translucent strips over the top corners (and one fixing a curl)
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'
+  for (const [tx, ty, ta] of [[-PW2 + 8, PH2 - 4, -0.5], [PW2 - 8, PH2 - 4, 0.5], [0, -PH2 + 4, 0.12]] as const) {
+    const tw2 = 26, th2 = 10
+    const rot = (sx: number, sy: number): V => w(tx + sx * Math.cos(ta) - sy * Math.sin(ta), ty + sx * Math.sin(ta) + sy * Math.cos(ta))
+    quad(ctx, rot(-tw2, th2), rot(tw2, th2), rot(tw2, -th2), rot(-tw2, -th2))
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(32,26,23,0.18)'; ctx.lineWidth = 1.5; ctx.stroke()
+  }
+}
+
+/** A round wall clock showing the REAL time (the iPad rule: authentic specifics).
+ * It PROJECTS off the wall: a case back at the wall plane, the face pushed
+ * toward the room, and the case's side showing as a shaded crescent between
+ * them — same move as the wainscot slab, so it reads mounted, not stuck on. */
+function drawClock(ctx: Ctx, P: (t: number, s: number) => V, tc: number, sc: number): void {
+  const w = fixtureFrame(P, tc, sc)
+  const c = w(0, 0)
+  const R = 92
+  const CD = 34                                               // how far the case stands off the wall
+  const up = w(0, 1)
+  let ix = -(up.x - c.x), iy = -(up.y - c.y)                  // inward: off the wall toward the room
+  const il = Math.hypot(ix, iy) || 1; ix /= il; iy /= il
+  const fc = { x: c.x + ix * CD, y: c.y + iy * CD }           // face centre, proud of the wall
+  const ang = Math.atan2(w(1, 0).y - c.y, w(1, 0).x - c.x)    // local x-axis on screen
+  // cast shadow on the wall (down-right of the projecting body)
+  ctx.fillStyle = 'rgba(32,26,23,0.2)'
+  ctx.beginPath(); ctx.arc(c.x + 11, c.y + 14, R, 0, Math.PI * 2); ctx.fill()
+  // case back at the wall plane — its visible side band faces the wall top and
+  // CATCHES LIGHT (same as the chair rail's bright top face), bounded in ink
+  ctx.fillStyle = theme.colors.coral
+  ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'                    // lit side of the case
+  ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke()
+  ctx.save()
+  ctx.translate(fc.x, fc.y); ctx.rotate(ang)
+  ctx.fillStyle = theme.colors.coral                          // chunky coral rim (the lit front)
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = INK; ctx.lineWidth = 3.5; ctx.stroke()
+  ctx.fillStyle = '#fefaf0'
+  ctx.beginPath(); ctx.arc(0, 0, R * 0.8, 0, Math.PI * 2); ctx.fill()
+  ctx.lineWidth = 2.5; ctx.stroke()
+  // ticks — chunky at the quarters
+  for (let i = 0; i < 12; i++) {
+    const a2 = (i / 12) * Math.PI * 2
+    const big = i % 3 === 0
+    ctx.strokeStyle = INK; ctx.lineWidth = big ? 4 : 2
+    ctx.beginPath()
+    ctx.moveTo(Math.cos(a2) * R * (big ? 0.62 : 0.68), Math.sin(a2) * R * (big ? 0.62 : 0.68))
+    ctx.lineTo(Math.cos(a2) * R * 0.74, Math.sin(a2) * R * 0.74)
+    ctx.stroke()
+  }
+  // hands from the real clock — minutes ease, the second hand ticks
+  const now = new Date()
+  const sec = now.getSeconds() + now.getMilliseconds() / 1000
+  const min = now.getMinutes() + sec / 60
+  const hr = (now.getHours() % 12) + min / 60
+  const hand = (frac: number, len: number, lw: number, col: string): void => {
+    const a2 = frac * Math.PI * 2 - Math.PI / 2
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(Math.cos(a2) * -R * 0.1, Math.sin(a2) * -R * 0.1)
+    ctx.lineTo(Math.cos(a2) * R * len, Math.sin(a2) * R * len); ctx.stroke()
+  }
+  hand(hr / 12, 0.42, 6, INK)
+  hand(min / 60, 0.62, 4.5, INK)
+  hand(Math.floor(sec) / 60, 0.68, 2, theme.colors.coral)
+  ctx.fillStyle = INK
+  ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill()
+  // glass glint — flat translucent blob, upper-left
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'
+  ctx.beginPath(); ctx.ellipse(-R * 0.34, -R * 0.38, R * 0.22, R * 0.11, -0.6, 0, Math.PI * 2); ctx.fill()
+  ctx.restore()
+}
+
+/** Pencil growth chart by the window — tick marks climbing the wall, each one a
+ * little older. The kind of thing that makes it somebody's room. */
+function drawGrowthChart(ctx: Ctx, P: (t: number, s: number) => V, tc: number, scBase: number): void {
+  const w = fixtureFrame(P, tc, scBase)
+  const GRAPHITE = 'rgba(74,78,86,0.75)'
+  const line = (a: V, b: V, lw: number): void => {
+    ctx.strokeStyle = GRAPHITE; ctx.lineWidth = lw; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
+  }
+  // the spine, drawn slightly wobbly like a hand-ruled line
+  const H = 470
+  for (let h = 0; h < H; h += 47) {
+    const wob = (rnd(h, 3) - 0.5) * 3
+    line(w(wob, h), w((rnd(h, 9) - 0.5) * 3, h + 47), 2.5)
+  }
+  // marks: [height, label] — the kid keeps getting taller
+  const marks: Array<[number, string]> = [[80, 'D · 4'], [175, 'D · 5'], [258, 'D · 6'], [330, 'D · 7'], [432, 'D · 8']]
+  ctx.font = `700 26px ${theme.fonts.display}, sans-serif`
+  ctx.textBaseline = 'middle'
+  for (const [h, label] of marks) {
+    const tiltY = (rnd(h, 21) - 0.5) * 4
+    line(w(-30, h), w(26, h + tiltY), 3)
+    const p = w(38, h + tiltY)
+    const a2 = Math.atan2(w(80, h).y - w(-30, h).y, w(80, h).x - w(-30, h).x)
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(a2)
+    ctx.fillStyle = GRAPHITE; ctx.textAlign = 'left'
+    ctx.fillText(label, 0, 0)
+    ctx.restore()
+  }
+}
+
+/** Per-wall decor placements (seed = which wall: 1 top, 2 right, 3 bottom, 4 left). */
+function drawDecor(ctx: Ctx, P: (t: number, s: number) => V, seed: number): void {
+  if (seed === 1) {
+    drawDoodle(ctx, P, 0.155, 0.52, 'rocket', 11)
+    drawClock(ctx, P, 0.29, 0.56)
+    drawGrowthChart(ctx, P, 0.645, 0.37)
+    drawDoodle(ctx, P, 0.86, 0.54, 'sun', 12)
+  } else if (seed === 2) {
+    drawDoodle(ctx, P, 0.34, 0.5, 'house', 13)
+    drawDoodle(ctx, P, 0.67, 0.47, 'heart', 14)
+  } else if (seed === 3) {
+    drawDoodle(ctx, P, 0.56, 0.5, 'family', 15)
+    drawDoodle(ctx, P, 0.24, 0.48, 'star', 16)
+  } else {
+    drawDoodle(ctx, P, 0.42, 0.5, 'dog', 17)
+    drawDoodle(ctx, P, 0.73, 0.47, 'star', 18)
+  }
+}
+
 /** A light switch — a plate that stands proud of the wall with a drop shadow and
  * a recessed rocker. */
 function drawSwitch(ctx: Ctx, P: (t: number, s: number) => V, tc: number, sc: number): void {
@@ -484,7 +718,8 @@ function drawWall(ctx: Ctx, p0: V, p1: V, q0: V, q1: V, seed: number, withWindow
   q4(projF(bbl, 10), projF(bbr, 10), projF(bbr, 20), projF(bbl, 20), BASE_SH, 2.5)           // fascia
   q4(bbl, bbr, projF(bbr, 10), projF(bbl, 10), '#fbfcfd', 2.5)                               // top ledge
 
-  // pennant bunting strung across the sky, then the window
+  // kid decor: crayon drawings, the clock, the growth chart — then bunting/window
+  drawDecor(ctx, P, seed)
   if (withBunting) drawBunting(ctx, P)
   // the door hangs on the BOTTOM wall near its left corner (t runs C→E, so
   // high t = screen-left). ~580 world units wide — a door, not a garage.

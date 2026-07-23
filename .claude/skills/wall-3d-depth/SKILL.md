@@ -27,6 +27,25 @@ Every wall is drawn by `drawWall`, which gives you:
 Two helpers you'll reuse: `fillQ(t0,t1,s0,s1,col)` (fill a wall-space rect) and
 `quad(ctx,a,b,c,d)` (fill/stroke an arbitrary 4-point world polygon).
 
+## ORIENTATION: art follows the fold — the BOTTOM wall is INVERTED on screen
+
+Every wall's content orients **up-the-wall** (increasing `s`), exactly like the
+clouds. On the **bottom wall, up-the-wall points DOWN-SCREEN**, so anything
+representational there — the door, picture frames, taped drawings, fixtures —
+must be drawn **inverted relative to the screen**. Do NOT "helpfully" flip art
+screen-upright on the bottom wall: it breaks the fold and reads pasted-on
+(this failed in practice with taped kid-drawings drawn screen-upright — Dylan
+flagged them immediately; same lesson as the door's lock, which had to be
+rotated into the door's leaning frame instead of standing screen-vertical).
+Practical rules:
+
+- Build fixtures in a local wall frame (`fixtureFrame` / `wpt` in walls.ts) so
+  they lean and flip WITH the wall — never in raw screen coordinates.
+- Side walls render their art sideways (up-the-wall = left/right). That's
+  correct; leave it.
+- Details INSIDE an element follow the element's own frame (a lock follows its
+  door), including which end is its "floor" end.
+
 ## THE SCALE TRAP (read this first)
 
 `t` maps to the wall's *length* (thousands of world units); `s` maps to its

@@ -88,7 +88,7 @@ shuffleboard (4100,2740), cards (5000,2040), dice (3350,3640), spinner
 (5000,3690), backgammon (4200,4090), teeth (4950,2840), notes (2950,2990),
 easy button (5400,4190), iPad (5350,1590), racetrack (~1400,1360), title
 blocks (~3300,2180 zone — keep clear), rug center (3300,2300), marbles
-scattered. Furniture on the perimeter: bed (6050,2350), desk (2900,4350),
+scattered. Furniture on the perimeter: bed (5900,2350), desk (2900,4350),
 bookshelf (4700,210), dresser (250,1500), toy chest (800,4260), plant
 (6330,320); the door is on the bottom wall near the left corner. Parked:
 dominoes (module exists, unregistered). Pick an open spot, mention it, and

@@ -44,7 +44,7 @@ export function createGames(): TableGame[] {
   return [
     // bedroom furniture — drawn FIRST so every game piece sits on top of it;
     // hit-testing runs in reverse, so games and props win contested presses
-    createBed(6050, 2350),
+    createBed(5900, 2350),   // head rail sits ON the east wall seam (6600)
     createDesk(2900, 4350),
     createBookshelf(4700, 210),
     createDresser(250, 1500),
