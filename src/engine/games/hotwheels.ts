@@ -9,12 +9,8 @@ import { INK } from './shared'
 // again to hop out. The whole table is road: plow marbles, clip blocks, leave
 // skid marks. The camera follows whichever car you're driving (driveTarget).
 
-const TRACK_CX = 1400
-const TRACK_CY = 1360
-const TRACK_A = 500      // circuit x half-extent
-const TRACK_B = 270      // circuit y half-extent
-const TRACK_W = 92       // asphalt width — wide enough to actually race on
-const N_PTS = 240
+const TRACK_W = 84       // asphalt width — wide enough to actually race on
+const N_PTS = 420        // sampled points around the circuit (smoothness)
 
 const CAR_LEN = 54
 const CAR_W = 30
@@ -40,16 +36,49 @@ interface Car {
 
 interface Skid { x: number; y: number; rot: number; age: number }
 
-// ---- track geometry: a rounded club-circuit oval with a gentle chicane ----
-const trackPts: { x: number; y: number }[] = []
-for (let i = 0; i < N_PTS; i++) {
-  const t = (i / N_PTS) * Math.PI * 2
-  trackPts.push({
-    x: TRACK_CX + TRACK_A * Math.cos(t),
-    y: TRACK_CY + TRACK_B * Math.sin(t) + Math.sin(t * 3) * 40, // the chicane wiggle
-  })
+// ---- track geometry: a hand-laid GP circuit in the upper-middle of the room
+// (world 6600×4600). Clockwise waypoints routed clear of the furniture and games
+// (chess ~1700,1990; iPad/cards on the right; rug/title below y~1850); a closed
+// Catmull-Rom spline is sampled through them for a smooth ribbon. ----
+type Pt = { x: number; y: number }
+const WAYPOINTS: Pt[] = [
+  { x: 633, y: 905 },    // 0 — start/finish, bottom straight
+  { x: 1108, y: 905 },
+  { x: 1408, y: 845 },   // ↑ bottom chicane
+  { x: 1733, y: 905 },   // ↓
+  { x: 2133, y: 865 },
+  { x: 2358, y: 725 },   // sweeping right-hander up the east side
+  { x: 2408, y: 535 },
+  { x: 2258, y: 385 },   // top-right hairpin
+  { x: 2008, y: 485 },   // ┐
+  { x: 1808, y: 375 },   // │ run of esses weaving across the top
+  { x: 1608, y: 515 },   // │
+  { x: 1383, y: 375 },   // │
+  { x: 1108, y: 495 },   // │
+  { x: 858, y: 375 },    // ┘
+  { x: 633, y: 505 },    // top-left sweeper
+  { x: 593, y: 700 },    // down the left side
+  { x: 648, y: 825 },    // left hairpin, closing back to start
+]
+
+function catmull(p0: Pt, p1: Pt, p2: Pt, p3: Pt, t: number): Pt {
+  const t2 = t * t, t3 = t2 * t
+  return {
+    x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+    y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
+  }
 }
-const trackPoint = (i: number): { x: number; y: number } => trackPts[((i % N_PTS) + N_PTS) % N_PTS]
+
+const trackPts: Pt[] = []
+{
+  const n = WAYPOINTS.length
+  const per = Math.round(N_PTS / n)
+  for (let i = 0; i < n; i++) {
+    const p0 = WAYPOINTS[(i - 1 + n) % n], p1 = WAYPOINTS[i], p2 = WAYPOINTS[(i + 1) % n], p3 = WAYPOINTS[(i + 2) % n]
+    for (let j = 0; j < per; j++) trackPts.push(catmull(p0, p1, p2, p3, j / per))
+  }
+}
+const trackPoint = (i: number): Pt => trackPts[((i % trackPts.length) + trackPts.length) % trackPts.length]
 
 // ---- keyboard state (armed only while driving) ----
 const keys = { up: false, down: false, left: false, right: false, boost: false }
@@ -243,12 +272,16 @@ export function createHotwheels(): TableGame {
     g.strokeStyle = '#4d4f52' // asphalt
     g.lineWidth = TRACK_W
     path(); g.stroke()
-    // red/white kerbs through the corners (left and right ends of the oval)
-    for (let i = 0; i < N_PTS; i++) {
-      const t = (i / N_PTS) * Math.PI * 2
-      const inCorner = Math.abs(Math.cos(t)) > 0.75 // the two 180° turns
-      if (!inCorner || i % 4 >= 2) continue
-      const p = trackPoint(i)
+    // red/white kerbs wherever the ribbon actually turns hard (curvature-based,
+    // so every corner of the winding circuit gets them — not just an oval's ends)
+    for (let i = 0; i < trackPts.length; i++) {
+      const a = trackPoint(i - 4), p = trackPoint(i), b = trackPoint(i + 4)
+      const ang1 = Math.atan2(p.y - a.y, p.x - a.x)
+      const ang2 = Math.atan2(b.y - p.y, b.x - p.x)
+      let d = ang2 - ang1
+      while (d > Math.PI) d -= Math.PI * 2
+      while (d < -Math.PI) d += Math.PI * 2
+      if (Math.abs(d) < 0.09 || i % 4 >= 2) continue // straightaways get none
       const q = trackPoint(i + 1)
       const ang = Math.atan2(q.y - p.y, q.x - p.x)
       for (const side of [-1, 1]) {
