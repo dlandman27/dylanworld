@@ -11,6 +11,8 @@ import { createNotes } from './notes'
 import { createMagnifier } from './magnifier'
 import { createHotwheels } from './hotwheels'
 import { createMarbleRun } from './marblerun'
+import { createRetroConsole } from './retroConsole'
+import { createBeanbag } from './beanbag'
 import { createEasyButton } from './easybutton'
 import { createBackgammon } from './backgammon'
 import { createIpad } from './ipad'
@@ -73,6 +75,10 @@ export function createGames(props: Prop[]): TableGame[] {
     createDresser(250, 1500),
     createToyChest(800, 4260),
     createPlant(6330, 320),
+    // 🎮 the gaming lounge, on the rug under the CRT
+    createBeanbag(5080, 1500, '#f0563e', 0.15),
+    createBeanbag(5770, 1540, '#2fb0a3', -0.16),
+    createRetroConsole(5620, 780),
     mail,
     // 🎲 board-game corner — clustered on the game rug (lower-left)
     createChess(750, 2680),

@@ -168,6 +168,7 @@ interface AreaRug { cx: number; cy: number; w: number; h: number; tilt: number; 
 const zoneRugs: AreaRug[] = [
   // the board-game corner (lower-left) — felt-green field, cream border, coral stripe
   { cx: 1280, cy: 3120, w: 2100, h: 1560, tilt: 0.03, field: '#6f9a55', border: '#efe4c4', stripe: '#c9532f' },
+  // (the gaming lounge rug is custom — see drawArcadeRug)
 ]
 
 function drawAreaRug(ctx: Ctx, r: AreaRug): void {
@@ -199,6 +200,48 @@ function drawAreaRug(ctx: Ctx, r: AreaRug): void {
   // clean ink edge
   ctx.lineWidth = 5; ctx.strokeStyle = INK
   roundRect(ctx, x0, y0, r.w, r.h, 26); ctx.stroke()
+  ctx.restore()
+}
+
+/** The gaming-lounge rug (upper-right, under the CRT) — a wild 90s arcade carpet:
+ * a dark field strewn with neon confetti (bolts, triangles, sparkles, rings). */
+function drawArcadeRug(ctx: Ctx): void {
+  const cx = 5340, cy = 1220, w = 1680, h = 1120, tilt = -0.03
+  const x0 = cx - w / 2, y0 = cy - h / 2
+  ctx.save()
+  ctx.translate(cx, cy); ctx.rotate(tilt); ctx.translate(-cx, -cy)
+  // soft offset shadow — the rug lies flat on the boards
+  roundRect(ctx, x0 + 10, y0 + 16, w, h, 30); ctx.fillStyle = 'rgba(32,26,23,0.16)'; ctx.fill()
+  // dark field
+  roundRect(ctx, x0, y0, w, h, 30); ctx.fillStyle = '#232a4a'; ctx.fill()
+  // neon confetti, clipped to the rug (seeded so it never strobes)
+  ctx.save(); roundRect(ctx, x0, y0, w, h, 30); ctx.clip()
+  const NEON = ['#ff5aa5', '#3fe0d0', '#b7ce3c', '#a98fd0', '#f7c948', '#f47b28', '#5aa0db']
+  let s = 20099
+  const rnd = (): number => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
+  for (let i = 0; i < 66; i++) {
+    const px = x0 + 30 + rnd() * (w - 60), py = y0 + 30 + rnd() * (h - 60)
+    const col = NEON[(rnd() * NEON.length) | 0], sz = 16 + rnd() * 30, kind = (rnd() * 4) | 0
+    ctx.save(); ctx.translate(px, py); ctx.rotate(rnd() * Math.PI * 2)
+    ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    if (kind === 0) { // triangle
+      ctx.beginPath(); ctx.moveTo(0, -sz); ctx.lineTo(sz * 0.86, sz * 0.5); ctx.lineTo(-sz * 0.86, sz * 0.5); ctx.closePath(); ctx.fill()
+    } else if (kind === 1) { // ring
+      ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, sz * 0.66, 0, Math.PI * 2); ctx.stroke()
+    } else if (kind === 2) { // 4-point sparkle
+      ctx.beginPath(); for (let k = 0; k < 8; k++) { const rr = k % 2 ? sz * 0.28 : sz; const a = (k * Math.PI) / 4; k ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr) } ctx.closePath(); ctx.fill()
+    } else { // zigzag bolt
+      ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(-sz * 0.6, -sz * 0.5); ctx.lineTo(0, -sz * 0.1); ctx.lineTo(-sz * 0.2, sz * 0.1); ctx.lineTo(sz * 0.5, sz * 0.6); ctx.stroke()
+    }
+    ctx.restore()
+  }
+  ctx.restore() // unclip
+  // bright double border stripe
+  const m = 44
+  ctx.strokeStyle = '#ff5aa5'; ctx.lineWidth = 22; roundRect(ctx, x0 + m, y0 + m, w - 2 * m, h - 2 * m, 20); ctx.stroke()
+  ctx.strokeStyle = '#3fe0d0'; ctx.lineWidth = 7; roundRect(ctx, x0 + m, y0 + m, w - 2 * m, h - 2 * m, 20); ctx.stroke()
+  // clean ink edge
+  ctx.lineWidth = 5; ctx.strokeStyle = INK; roundRect(ctx, x0, y0, w, h, 30); ctx.stroke()
   ctx.restore()
 }
 
@@ -237,6 +280,7 @@ export function drawTable(ctx: Ctx, cam: CameraState, canvas: HTMLCanvasElement,
   // the oval rug under the title, then the zone rugs that group the toys
   drawRug(ctx)
   for (const r of zoneRugs) drawAreaRug(ctx, r)
+  drawArcadeRug(ctx)
 
   // the room reads calmer inside — a gentle ambient mute across the floor, then a
   // warm sunbeam from the window as the bright spot (clipped to the floor)
