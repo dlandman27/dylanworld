@@ -41,8 +41,8 @@ export const world: WorldConfig = {
     // loose change: a spilled pocket near the cards + strays everywhere
     { kind: 'coin', x: 4600, y: 2440, count: 7, spread: 260 },
     { kind: 'coin', x: 3300, y: 2740, count: 8, spread: 2000 },
-    // poker chips by the cards — somebody's mid-hand
-    { kind: 'chip', x: 4850, y: 2290, count: 10, spread: 150 },
-    { kind: 'chip', x: 4680, y: 2480, count: 5, spread: 90 },  // moved off the bigger bed's footprint
+    // poker chips by the cards on the board-game rug — somebody's mid-hand
+    { kind: 'chip', x: 1900, y: 2450, count: 10, spread: 150 },
+    { kind: 'chip', x: 1720, y: 2560, count: 5, spread: 90 },
   ],
 }

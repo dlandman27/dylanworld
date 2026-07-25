@@ -2,15 +2,15 @@ import { theme } from '../../config/theme'
 import { world } from '../../config/world'
 import { spark, registerObstacleProvider, allObstacles } from '../physics'
 import type { Ctx, TableGame } from './shared'
-import { INK } from './shared'
+import { INK, roundRect } from './shared'
 
 // Toy race circuit + die-cast cars. CLICK a car to hop in — drive with WASD /
 // arrow keys (up throttle, down brake/reverse, left/right steer), Esc or click
 // again to hop out. The whole table is road: plow marbles, clip blocks, leave
 // skid marks. The camera follows whichever car you're driving (driveTarget).
 
-const TRACK_W = 84       // asphalt width — wide enough to actually race on
-const N_PTS = 420        // sampled points around the circuit (smoothness)
+const TRACK_W = 118      // asphalt width — wide enough to actually race + drift
+const N_PTS = 460        // sampled points around the circuit (smoothness)
 
 const CAR_LEN = 54
 const CAR_W = 30
@@ -36,30 +36,39 @@ interface Car {
 
 interface Skid { x: number; y: number; rot: number; age: number }
 
-// ---- track geometry: a hand-laid GP circuit in the upper-middle of the room
-// (world 6600×4600). Clockwise waypoints routed clear of the furniture and games
-// (chess ~1700,1990; iPad/cards on the right; rug/title below y~1850); a closed
+// ---- track geometry: a big GP circuit sprawling across the whole UPPER-LEFT of
+// the room (world 6600×4600). Clockwise waypoints, routed clear of the dresser
+// (x ≤ 440 around y1500) and the lower games/rug (y > ~2200); a closed
 // Catmull-Rom spline is sampled through them for a smooth ribbon. ----
 type Pt = { x: number; y: number }
-const WAYPOINTS: Pt[] = [
-  { x: 633, y: 905 },    // 0 — start/finish, bottom straight
-  { x: 1108, y: 905 },
-  { x: 1408, y: 845 },   // ↑ bottom chicane
-  { x: 1733, y: 905 },   // ↓
-  { x: 2133, y: 865 },
-  { x: 2358, y: 725 },   // sweeping right-hander up the east side
-  { x: 2408, y: 535 },
-  { x: 2258, y: 385 },   // top-right hairpin
-  { x: 2008, y: 485 },   // ┐
-  { x: 1808, y: 375 },   // │ run of esses weaving across the top
-  { x: 1608, y: 515 },   // │
-  { x: 1383, y: 375 },   // │
-  { x: 1108, y: 495 },   // │
-  { x: 858, y: 375 },    // ┘
-  { x: 633, y: 505 },    // top-left sweeper
-  { x: 593, y: 700 },    // down the left side
-  { x: 648, y: 825 },    // left hairpin, closing back to start
+// the raw layout below is shrunk by TRACK_SCALE and re-centred at (TRACK_CX,
+// TRACK_CY) — so the whole track resizes/moves from just these two knobs.
+const TRACK_SCALE = 0.66
+const TRACK_CX = 1750, TRACK_CY = 900
+const RAW_WAYPOINTS: Pt[] = [
+  { x: 720, y: 1980 },   // 0 — start/finish, long bottom straight
+  { x: 1500, y: 2030 },
+  { x: 2300, y: 1990 },
+  { x: 2900, y: 1860 },  // sweep up the right side
+  { x: 3080, y: 1480 },
+  { x: 2960, y: 1120 },  // right-side esse
+  { x: 3090, y: 760 },
+  { x: 2760, y: 500 },   // top-right hairpin
+  { x: 2280, y: 560 },
+  { x: 1820, y: 460 },   // gentle wave across the top
+  { x: 1380, y: 580 },
+  { x: 940, y: 460 },
+  { x: 640, y: 700 },    // top-left corner
+  { x: 560, y: 1080 },   // down the left side (x≥560 clears the dresser)
+  { x: 680, y: 1440 },
+  { x: 560, y: 1780 },
+  { x: 660, y: 1960 },   // left hairpin, closing back to start
 ]
+const RAW_C = { x: 1825, y: 1245 }   // bbox centre of the raw layout above
+const WAYPOINTS: Pt[] = RAW_WAYPOINTS.map((p) => ({
+  x: TRACK_CX + (p.x - RAW_C.x) * TRACK_SCALE,
+  y: TRACK_CY + (p.y - RAW_C.y) * TRACK_SCALE,
+}))
 
 function catmull(p0: Pt, p1: Pt, p2: Pt, p3: Pt, t: number): Pt {
   const t2 = t * t, t3 = t2 * t
@@ -262,46 +271,32 @@ export function createHotwheels(): TableGame {
     g.save()
     g.lineJoin = 'round'
     g.lineCap = 'round'
-    // shadow + ink edge + asphalt
-    g.strokeStyle = 'rgba(32,26,23,0.16)'
-    g.lineWidth = TRACK_W + 10
-    g.save(); g.translate(4, 7); path(); g.stroke(); g.restore()
-    g.strokeStyle = INK
-    g.lineWidth = TRACK_W + 6
-    path(); g.stroke()
-    g.strokeStyle = '#4d4f52' // asphalt
-    g.lineWidth = TRACK_W
-    path(); g.stroke()
-    // red/white kerbs wherever the ribbon actually turns hard (curvature-based,
-    // so every corner of the winding circuit gets them — not just an oval's ends)
-    for (let i = 0; i < trackPts.length; i++) {
-      const a = trackPoint(i - 4), p = trackPoint(i), b = trackPoint(i + 4)
-      const ang1 = Math.atan2(p.y - a.y, p.x - a.x)
-      const ang2 = Math.atan2(b.y - p.y, b.x - p.x)
-      let d = ang2 - ang1
-      while (d > Math.PI) d -= Math.PI * 2
-      while (d < -Math.PI) d += Math.PI * 2
-      if (Math.abs(d) < 0.09 || i % 4 >= 2) continue // straightaways get none
-      const q = trackPoint(i + 1)
+    // ---- orange Hot Wheels track: cast shadow, ink border, bright raised side
+    //      rails around a slightly-recessed centre channel (no infield — it's
+    //      just track laid on the floor, like the real toy) ----
+    g.strokeStyle = 'rgba(32,26,23,0.2)'; g.lineWidth = TRACK_W + 10
+    g.save(); g.translate(5, 8); path(); g.stroke(); g.restore()
+    g.strokeStyle = INK; g.lineWidth = TRACK_W + 6; path(); g.stroke()
+    g.strokeStyle = '#ffb877'; g.lineWidth = TRACK_W; path(); g.stroke()          // bright outer rim
+    g.strokeStyle = '#f2872f'; g.lineWidth = TRACK_W - 7; path(); g.stroke()      // rail tops
+    g.strokeStyle = '#d9661a'; g.lineWidth = TRACK_W - 42; path(); g.stroke()     // recessed centre channel
+    g.strokeStyle = 'rgba(120,50,10,0.3)'; g.lineWidth = 2; path(); g.stroke()    // centre groove hint
+
+    // ---- blue connector clips straddling the track at intervals ----
+    const everyClip = Math.round(trackPts.length / 6)
+    for (let i = 0; i < trackPts.length; i += everyClip) {
+      const p = trackPoint(i), q = trackPoint(i + 1)
       const ang = Math.atan2(q.y - p.y, q.x - p.x)
-      for (const side of [-1, 1]) {
-        g.save()
-        g.translate(
-          p.x + Math.cos(ang + Math.PI / 2) * side * (TRACK_W / 2 + 3),
-          p.y + Math.sin(ang + Math.PI / 2) * side * (TRACK_W / 2 + 3),
-        )
-        g.rotate(ang)
-        g.fillStyle = i % 8 < 4 ? '#e04434' : '#fbfaf4'
-        g.fillRect(-7, -3, 14, 6)
-        g.restore()
-      }
+      g.save(); g.translate(p.x, p.y); g.rotate(ang)
+      const cw = 30, ch = TRACK_W + 20
+      g.fillStyle = 'rgba(32,26,23,0.2)'; roundRect(g, -cw / 2 + 3, -ch / 2 + 4, cw, ch, 8); g.fill()
+      g.fillStyle = '#4aa3e0'; roundRect(g, -cw / 2, -ch / 2, cw, ch, 8); g.fill()
+      g.lineWidth = 2.5; g.strokeStyle = INK; g.stroke()
+      g.fillStyle = 'rgba(255,255,255,0.4)'; roundRect(g, -cw / 2 + 5, -ch / 2 + 4, cw - 10, 6, 3); g.fill()   // sheen
+      g.fillStyle = '#2f7cb8'
+      for (const py of [-ch * 0.3, ch * 0.3]) { g.beginPath(); g.ellipse(0, py, 6, 6, 0, 0, Math.PI * 2); g.fill(); g.lineWidth = 1.6; g.strokeStyle = INK; g.stroke() }
+      g.restore()
     }
-    // white edge lines
-    g.strokeStyle = 'rgba(255,255,255,0.85)'
-    g.lineWidth = 2.5
-    g.save(); path(); g.stroke(); g.restore()
-    // (inner edge line via slightly narrower stroke of transparent trick is
-    // overkill — the single boundary line + kerbs read as a toy circuit)
     // checkered start/finish line at t=0 (right side of the oval)
     const s0 = trackPoint(0)
     const s1 = trackPoint(2)
