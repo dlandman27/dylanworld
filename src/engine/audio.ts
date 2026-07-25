@@ -40,6 +40,47 @@ export function clunk(strength: number): void {
   osc.stop(now + 0.1)
 }
 
+/** A bright bell/chime at a given frequency — the marble-run xylophone bars. */
+export function chime(freq: number): void {
+  if (!ctx || ctx.state !== 'running') return
+  const now = ctx.currentTime
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = 'triangle'
+  osc.frequency.setValueAtTime(freq, now)
+  gain.gain.setValueAtTime(0.0001, now)
+  gain.gain.exponentialRampToValueAtTime(0.17, now + 0.005)
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5)
+  osc.connect(gain).connect(ctx.destination)
+  osc.start(now)
+  osc.stop(now + 0.55)
+}
+
+/** A rising four-note fanfare — the Plinko jackpot payoff. */
+export function fanfare(): void {
+  if (!ctx || ctx.state !== 'running') return
+  const c = ctx
+  const now = c.currentTime
+  const notes = [523.25, 659.25, 783.99, 1046.5] // C5 E5 G5 C6, a major arpeggio
+  notes.forEach((f, i) => {
+    const at = now + i * 0.09
+    // two detuned oscillators for a brassy shimmer
+    for (const det of [0, 1.006]) {
+      const osc = c.createOscillator()
+      const gain = c.createGain()
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(f * (det || 1), at)
+      const vol = i === notes.length - 1 ? 0.2 : 0.14
+      gain.gain.setValueAtTime(0.0001, at)
+      gain.gain.exponentialRampToValueAtTime(vol, at + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + (i === notes.length - 1 ? 0.6 : 0.22))
+      osc.connect(gain).connect(c.destination)
+      osc.start(at)
+      osc.stop(at + 0.65)
+    }
+  })
+}
+
 /** A short bright pick/pop — for UI toggles like equipping a cursor. */
 export function pop(): void {
   if (!ctx || ctx.state !== 'running') return

@@ -10,6 +10,7 @@ import { createTeeth } from './teeth'
 import { createNotes } from './notes'
 import { createMagnifier } from './magnifier'
 import { createHotwheels } from './hotwheels'
+import { createMarbleRun } from './marblerun'
 import { createEasyButton } from './easybutton'
 import { createBackgammon } from './backgammon'
 import { createIpad } from './ipad'
@@ -79,7 +80,7 @@ export function createGames(props: Prop[]): TableGame[] {
     createCards(1860, 2700),
     createDice(1310, 3110),
     createBackgammon(1860, 3500),
-    createShuffleboard(6150, 3750),   // bottom-right
+    createShuffleboard(4380, 3760),   // slid left to clear the marble-run corner
     createSpinner(5000, 3690),
     createTop(4250, 1890),
     createTop(2200, 2640, GOLD),
@@ -99,6 +100,9 @@ export function createGames(props: Prop[]): TableGame[] {
     createDrone(3400, 260, props, '#b7ce3c', 'drone-2'),
     createDrone(3680, 260, props, '#a98fd0', 'drone-3'),
     createDrone(3960, 260, props, '#f47b28', 'drone-4'),
+    // 🔵 the marble run — a tall chute tower in the bottom-right corner; drop a
+    // marble in the funnel and it clatters down back onto the floor
+    createMarbleRun(6250, 3380, props),
     // ambient cloud/bird shadows — draws only in drawAbove, so it shades every
     // game and prop; placed after the tops so shadows fall on standing pieces too
     createOverhead(),

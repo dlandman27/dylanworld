@@ -37,6 +37,8 @@ export const world: WorldConfig = {
   props: [
     // marbles strewn across the table, grabbable/flingable
     { kind: 'pebble', x: 3300, y: 2740, count: 30, spread: 2100 },
+    // a stash of marbles beside the Plinko board (bottom-right), ready to drop in
+    { kind: 'pebble', x: 5680, y: 3610, count: 16, spread: 150 },
     { kind: 'ball', x: 2700, y: 2140, count: 1, spread: 0 },
     // loose change: a spilled pocket near the cards + strays everywhere
     { kind: 'coin', x: 4600, y: 2440, count: 7, spread: 260 },
