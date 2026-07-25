@@ -162,6 +162,46 @@ function drawRug(ctx: Ctx): void {
   ctx.restore()
 }
 
+// Rectangular kid's area rugs that ZONE the floor — each pulls a cluster of toys
+// together ("board games here", "reading nook there") and warms the bare boards.
+interface AreaRug { cx: number; cy: number; w: number; h: number; tilt: number; field: string; border: string; stripe: string }
+const zoneRugs: AreaRug[] = [
+  // the board-game corner (lower-left) — felt-green field, cream border, coral stripe
+  { cx: 1280, cy: 3120, w: 2100, h: 1560, tilt: 0.03, field: '#6f9a55', border: '#efe4c4', stripe: '#c9532f' },
+]
+
+function drawAreaRug(ctx: Ctx, r: AreaRug): void {
+  ctx.save()
+  ctx.translate(r.cx, r.cy); ctx.rotate(r.tilt); ctx.translate(-r.cx, -r.cy)
+  const x0 = r.cx - r.w / 2, y0 = r.cy - r.h / 2
+
+  // soft offset shadow — the rug lies flat on the boards
+  roundRect(ctx, x0 + 10, y0 + 16, r.w, r.h, 26); ctx.fillStyle = 'rgba(32,26,23,0.15)'; ctx.fill()
+
+  // combed fringe along the two short (top/bottom) ends
+  ctx.strokeStyle = r.border; ctx.lineWidth = 6; ctx.lineCap = 'round'
+  const n = Math.round(r.w / 26)
+  for (let i = 0; i <= n; i++) {
+    const fx = x0 + (r.w * i) / n
+    ctx.beginPath(); ctx.moveTo(fx, y0); ctx.lineTo(fx, y0 - 22); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(fx, y0 + r.h); ctx.lineTo(fx, y0 + r.h + 22); ctx.stroke()
+  }
+
+  // field + inset border stripe + a thin accent line
+  roundRect(ctx, x0, y0, r.w, r.h, 26); ctx.fillStyle = r.field; ctx.fill()
+  const m = 46
+  ctx.lineCap = 'butt'
+  ctx.strokeStyle = r.border; ctx.lineWidth = 30
+  roundRect(ctx, x0 + m, y0 + m, r.w - 2 * m, r.h - 2 * m, 18); ctx.stroke()
+  ctx.strokeStyle = r.stripe; ctx.lineWidth = 8
+  roundRect(ctx, x0 + m, y0 + m, r.w - 2 * m, r.h - 2 * m, 18); ctx.stroke()
+
+  // clean ink edge
+  ctx.lineWidth = 5; ctx.strokeStyle = INK
+  roundRect(ctx, x0, y0, r.w, r.h, 26); ctx.stroke()
+  ctx.restore()
+}
+
 /** Warm sunlight spilling from the top-wall window down onto the floor. */
 function drawSunbeam(ctx: Ctx): void {
   const cx = world.spawn.x  // the window is centred on the top wall (x = width/2)
@@ -194,8 +234,9 @@ export function drawTable(ctx: Ctx, cam: CameraState, canvas: HTMLCanvasElement,
   drawPlanks(ctx, cam, canvas)
   ctx.restore()
 
-  // the oval rug, laid on the boards under the title
+  // the oval rug under the title, then the zone rugs that group the toys
   drawRug(ctx)
+  for (const r of zoneRugs) drawAreaRug(ctx, r)
 
   // the room reads calmer inside — a gentle ambient mute across the floor, then a
   // warm sunbeam from the window as the bright spot (clipped to the floor)

@@ -114,6 +114,18 @@ export interface StoryStop {
   body: string
 }
 
+export interface ExperienceEntry {
+  id: string
+  company: string
+  role: string
+  years: string
+  location?: string
+  blurb: string
+  color: string      // tile/badge color (a house-palette hex)
+  mat?: string       // frame background behind the logo (defaults to `color`)
+  logo?: string      // optional '/logos/<file>.png'; falls back to an initial tile
+}
+
 export interface ContactConfig {
   email: string
   location: string

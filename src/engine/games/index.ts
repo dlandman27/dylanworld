@@ -13,6 +13,7 @@ import { createHotwheels } from './hotwheels'
 import { createEasyButton } from './easybutton'
 import { createBackgammon } from './backgammon'
 import { createIpad } from './ipad'
+// import { createBasketball } from './basketball' // parked — module kept
 // import { createSandbox } from './sandbox' // parked — re-enable in createGames too
 // import { createSoccer } from './soccer' // parked — re-enable in createGames too
 import { createOverhead } from './overhead'
@@ -25,6 +26,11 @@ import { createCards } from './cards'
 import { createBed } from './bed'
 import { createDesk } from './desk'
 import { createBookshelf } from './bookshelf'
+import type { BookshelfGame } from './bookshelf'
+import { initProjectCard } from '../../ui/projectCard'
+import { createGallery } from './gallery'
+import type { GalleryGame } from './gallery'
+import { initExperienceCard } from '../../ui/experienceCard'
 import { createDresser } from './dresser'
 import { createToyChest } from './toychest'
 import { createPlant } from './plant'
@@ -41,29 +47,41 @@ export function createGames(): TableGame[] {
   let mail: MailGame | null = null
   const card = initContactCard(() => mail?.close())
   mail = createMail(3750, 2630, () => card.show(), () => card.hide())
+  // the bookshelf pulls a book out to open its project card; dismissing the card
+  // (or pressing the book again) shelves it
+  let shelf: BookshelfGame | null = null
+  const projCard = initProjectCard(() => shelf?.closeBook())
+  shelf = createBookshelf(4700, 210, (p) => projCard.show(p), () => projCard.hide())
+  // the career gallery on the west wall: press a framed job to open its card
+  let gallery: GalleryGame | null = null
+  const expCard = initExperienceCard(() => gallery?.closeFrame())
+  gallery = createGallery((e) => expCard.show(e), () => expCard.hide())
   return [
     // bedroom furniture — drawn FIRST so every game piece sits on top of it;
     // hit-testing runs in reverse, so games and props win contested presses
     createBed(5900, 2350),   // head rail sits ON the east wall seam (6600)
     createDesk(2900, 4350),
-    createBookshelf(4700, 210),
+    shelf,
+    gallery,
     createDresser(250, 1500),
     createToyChest(800, 4260),
     createPlant(6330, 320),
     mail,
-    createChess(1700, 1990),
-    createScrabble(2150, 3590),
+    // 🎲 board-game corner — clustered on the game rug (lower-left)
+    createChess(750, 2680),
+    createScrabble(820, 3520),
+    createCards(1860, 2700),
+    createDice(1310, 3110),
+    createBackgammon(1860, 3500),
     createShuffleboard(4100, 2740),
-    createCards(5000, 2040),
-    createDice(3350, 3640),
     createSpinner(5000, 3690),
     createTop(4250, 1890),
     createTop(2200, 2640, GOLD),
     createTeeth(4950, 2840),
     createNotes(2950, 2990),
     createEasyButton(5400, 4190),
-    createBackgammon(4200, 4090),
     createIpad(5350, 1590),
+    // createBasketball(6100, 3350), // parked — the sports corner, hidden for now
     // createSandbox(1520, 3960), // parked — hidden for now
     // createSoccer(), // parked — bring back when the table's bigger
     createHotwheels(),

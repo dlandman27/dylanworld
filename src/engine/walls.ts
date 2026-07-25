@@ -37,6 +37,20 @@ const JAMB_LIT = '#eef1f3'       // recessed jamb face in light (bottom/right)
 interface V { x: number; y: number }
 const lerp = (a: V, b: V, s: number): V => ({ x: a.x + (b.x - a.x) * s, y: a.y + (b.y - a.y) * s })
 
+/** Wall depth (how far each wall splays outward from its floor edge). */
+export const WALL_D = D
+
+/** Maps WEST-wall space → world coords, matching drawWall(E, A, Eo, Ao). `t` runs
+ * bottom→top of the wall (0 = floor corner at y=H, 1 = y=0); `s` = depth up the
+ * wall (0 = floor seam, 1 = ceiling). Exported so an interactive piece (the
+ * career gallery) can hang on the wall and hit-test presses in world space. */
+export function westWallP(t: number, s: number): V {
+  const H = world.height
+  const p0 = { x: 0, y: H }, p1 = { x: 0, y: 0 }
+  const q0 = { x: -D, y: H + D }, q1 = { x: -D, y: -D }
+  return lerp(lerp(p0, q0, s), lerp(p1, q1, s), t)
+}
+
 // deterministic per-cell noise in [0,1) — clouds stay put frame to frame
 function rnd(a: number, b: number): number {
   let h = (Math.imul(a, 73856093) ^ Math.imul(b, 19349663)) >>> 0
@@ -467,8 +481,10 @@ function drawDecor(ctx: Ctx, P: (t: number, s: number) => V, seed: number): void
     drawDoodle(ctx, P, 0.56, 0.5, 'family', 15)
     drawDoodle(ctx, P, 0.24, 0.48, 'star', 16)
   } else {
-    drawDoodle(ctx, P, 0.42, 0.5, 'dog', 17)
-    drawDoodle(ctx, P, 0.73, 0.47, 'star', 18)
+    // west wall (seed 4) is the career gallery — the framed work history hangs
+    // here, drawn on top by src/engine/games/gallery.ts. One doodle low in the
+    // corner keeps it from feeling sterile without crowding the frames.
+    drawDoodle(ctx, P, 0.14, 0.42, 'dog', 17)
   }
 }
 

@@ -69,6 +69,9 @@ export const projects: ProjectEntry[] = [
     title: 'Reimagining the Virtual Classroom',
     tags: ['research', 'published'],
     blurb: 'Published ACM research on making virtual classrooms more engaging — better student-teacher interaction inspired by what physical classrooms get right.',
-    links: [{ label: 'Read the paper', url: 'https://dl.acm.org/doi/abs/10.1145/3591196.3596617' }],
+    links: [
+      { label: 'Read the paper', url: 'https://dl.acm.org/doi/abs/10.1145/3591196.3596617' },
+      { label: 'Conference page', url: 'https://programs.sigchi.org/c&c/2023/program/content/116675' },
+    ],
   },
 ]
