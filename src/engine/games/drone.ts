@@ -14,9 +14,7 @@ import { INK, roundRect } from './shared'
 // carry it through the air. One vehicle at a time (shared with the cars).
 
 const R = 44
-const ACCEL = 1650
 const MAX_V = 650
-const DRAG = 2.3
 const ALT_MIN = 24, ALT_MAX = 150, ALT_DEFAULT = 62
 const CARRY_GAP = 52     // how far the grabbed marble hangs below the drone
 
@@ -29,10 +27,11 @@ const KEYMAP: Record<string, keyof typeof keys> = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
   Space: 'ascend', KeyC: 'descend', ShiftLeft: 'boost', ShiftRight: 'boost',
 }
-let flying = false
 const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi)
 
-export function createDrone(padX: number, padY: number, props: Prop[]): TableGame {
+export function createDrone(padX: number, padY: number, props: Prop[], color: string, id: string): TableGame {
+  let flying = false
+  let returning = false     // auto-flying home to the pad (recalled)
   const d = { x: padX, y: padY, vx: 0, vy: 0, z: 0, alt: ALT_DEFAULT, spin: 0, yaw: 0, tiltX: 0, tiltY: 0 }
   let carried: Prop | null = null
   // the held marble follows on a spring (it swings/trails, settles when hovering)
@@ -60,8 +59,8 @@ export function createDrone(padX: number, padY: number, props: Prop[]): TableGam
 
   const setFlying = (on: boolean): void => {
     flying = on
-    if (on) { d.alt = ALT_DEFAULT; window.dispatchEvent(new CustomEvent('dw-vehicle-claim', { detail: 'drone' })); showVehicleHelp('drone') }
-    else { keys.up = keys.down = keys.left = keys.right = keys.ascend = keys.descend = keys.boost = false; releaseCarried(); hideVehicleHelp() }
+    if (on) { returning = false; d.alt = ALT_DEFAULT; window.dispatchEvent(new CustomEvent('dw-vehicle-claim', { detail: id })); showVehicleHelp('drone') }
+    else { keys.up = keys.down = keys.left = keys.right = keys.ascend = keys.descend = keys.boost = false; releaseCarried(); hideVehicleHelp(); droneTargetPos = null }
   }
 
   window.addEventListener('keydown', (e) => {
@@ -72,7 +71,8 @@ export function createDrone(padX: number, padY: number, props: Prop[]): TableGam
     if (k) { keys[k] = true; e.preventDefault() }
   })
   window.addEventListener('keyup', (e) => { const k = KEYMAP[e.code]; if (k) keys[k] = false })
-  window.addEventListener('dw-vehicle-claim', (e) => { if ((e as CustomEvent).detail !== 'drone') setFlying(false) })
+  // any other vehicle (another drone, or a car) claimed control → land this one
+  window.addEventListener('dw-vehicle-claim', (e) => { if ((e as CustomEvent).detail !== id) setFlying(false) })
 
   const bodyX = (): number => d.x + d.tiltX
   const bodyY = (): number => d.y - d.z + d.tiltY
@@ -81,6 +81,11 @@ export function createDrone(padX: number, padY: number, props: Prop[]): TableGam
     id: 'drone',
     onDown(x, y) {
       if (Math.hypot(x - bodyX(), y - bodyY()) < R + 20) { setFlying(!flying); return true }
+      // tap this drone's empty pad to recall it home (only when it's not in use)
+      if (!flying && Math.hypot(x - padX, y - padY) < 66) {
+        if (Math.hypot(d.x - padX, d.y - padY) > 12) returning = true
+        return true
+      }
       return false
     },
     onMove() {},
@@ -89,29 +94,35 @@ export function createDrone(padX: number, padY: number, props: Prop[]): TableGam
       if (flying) {
         if (keys.ascend) d.alt = Math.min(ALT_MAX, d.alt + 175 * dt)
         if (keys.descend) d.alt = Math.max(ALT_MIN, d.alt - 175 * dt)
-        const accel = keys.boost ? ACCEL * 1.8 : ACCEL
-        let ax = 0, ay = 0
-        if (keys.left) ax -= accel
-        if (keys.right) ax += accel
-        if (keys.up) ay -= accel
-        if (keys.down) ay += accel
-        d.vx += ax * dt; d.vy += ay * dt
+        // buttery: ease velocity toward a target (smooth ramp up AND glide to stop)
+        const maxv = keys.boost ? MAX_V * 1.7 : MAX_V
+        let tvx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
+        let tvy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0)
+        const tl = Math.hypot(tvx, tvy)
+        if (tl > 0) { tvx = (tvx / tl) * maxv; tvy = (tvy / tl) * maxv }
+        const k = Math.min(1, dt * 4.5)
+        d.vx += (tvx - d.vx) * k
+        d.vy += (tvy - d.vy) * k
+      } else if (!returning) {
+        const dr = Math.exp(-4 * dt); d.vx *= dr; d.vy *= dr
       }
-      d.z += ((flying ? d.alt : 0) - d.z) * Math.min(1, dt * 5)
-      d.spin += dt * (flying ? 42 : 6)
-
-      const dr = Math.exp(-DRAG * dt)
-      d.vx *= dr; d.vy *= dr
-      const maxv = keys.boost ? MAX_V * 1.7 : MAX_V
-      const sp = Math.hypot(d.vx, d.vy)
-      if (sp > maxv) { d.vx = (d.vx / sp) * maxv; d.vy = (d.vy / sp) * maxv }
+      const tz = flying ? d.alt : (returning ? 46 : 0)
+      d.z += (tz - d.z) * Math.min(1, dt * 5)
+      d.spin += dt * (flying || returning ? 42 : 6)
       d.x = clamp(d.x + d.vx * dt, 60, world.width - 60)
       d.y = clamp(d.y + d.vy * dt, 60, world.height - 60)
+      // recalled → ease home to the pad, then settle
+      if (!flying && returning) {
+        d.x += (padX - d.x) * Math.min(1, dt * 3)
+        d.y += (padY - d.y) * Math.min(1, dt * 3)
+        d.vx = 0; d.vy = 0
+        if (Math.hypot(padX - d.x, padY - d.y) < 8) { d.x = padX; d.y = padY; returning = false }
+      }
 
       // lean + yaw into the motion
       d.tiltX += (d.vx * 0.02 - d.tiltX) * Math.min(1, dt * 8)
       d.tiltY += (d.vy * 0.02 - d.tiltY) * Math.min(1, dt * 8)
-      if (sp > 45) {
+      if (Math.hypot(d.vx, d.vy) > 45) {
         let dif = (Math.atan2(d.vy, d.vx) - Math.PI / 2) - d.yaw
         while (dif > Math.PI) dif -= Math.PI * 2
         while (dif < -Math.PI) dif += Math.PI * 2
@@ -150,9 +161,9 @@ export function createDrone(padX: number, padY: number, props: Prop[]): TableGam
         }
       }
 
-      droneTargetPos = flying ? { x: d.x, y: bodyY() } : null
+      if (flying) droneTargetPos = { x: d.x, y: bodyY() }
     },
-    draw(g: Ctx, t) { drawPad(g, padX, padY); if (!flying) drawDrone(g, d, false, t) },
+    draw(g: Ctx, t) { drawPad(g, padX, padY, color); if (!flying && !returning) drawDrone(g, d, false, t, color, false) },
     drawAbove(g: Ctx, t) {
       // shadow that grows as a dropped marble nears the floor
       if (dropping) {
@@ -160,9 +171,9 @@ export function createDrone(padX: number, padY: number, props: Prop[]): TableGam
         g.fillStyle = `rgba(32,26,23,${0.1 + 0.16 * s})`
         g.beginPath(); g.ellipse(dropping.sx, dropping.gy, 5 + 12 * s, 3 + 8 * s, 0, 0, Math.PI * 2); g.fill()
       }
-      if (!flying) return
+      if (!(flying || returning)) return
       if (carried) drawBeam(g, bodyX(), bodyY(), carried.pos.x, carried.pos.y, t)
-      drawDrone(g, d, true, t)
+      drawDrone(g, d, true, t, color, flying)
     },
   }
 }
@@ -183,17 +194,18 @@ function drawBeam(g: Ctx, x0: number, y0: number, x1: number, y1: number, t: num
   g.restore()
 }
 
-function drawPad(g: Ctx, x: number, y: number): void {
+function drawPad(g: Ctx, x: number, y: number, color: string): void {
   g.fillStyle = 'rgba(32,26,23,0.14)'; g.beginPath(); g.ellipse(x + 4, y + 6, 64, 47, 0, 0, Math.PI * 2); g.fill()
   g.fillStyle = '#3a3f45'; g.beginPath(); g.ellipse(x, y, 62, 45, 0, 0, Math.PI * 2); g.fill()
   g.lineWidth = 4; g.strokeStyle = INK; g.lineJoin = 'round'; g.stroke()
-  g.strokeStyle = '#f7c948'; g.setLineDash([11, 8]); g.lineWidth = 3
+  g.strokeStyle = color; g.setLineDash([11, 8]); g.lineWidth = 3   // ring matches the drone
   g.beginPath(); g.ellipse(x, y, 49, 35, 0, 0, Math.PI * 2); g.stroke(); g.setLineDash([])
-  g.fillStyle = '#f7c948'; g.font = `900 36px "Arial Black", ${theme.fonts.display}, sans-serif`
-  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('H', x, y + 2)
+  g.fillStyle = color; g.font = `900 36px "Arial Black", ${theme.fonts.display}, sans-serif`
+  g.textAlign = 'center'; g.textBaseline = 'middle'
+  g.lineWidth = 4; g.lineJoin = 'round'; g.strokeStyle = INK; g.strokeText('H', x, y + 2); g.fillText('H', x, y + 2)
 }
 
-function drawDrone(g: Ctx, d: { x: number; y: number; z: number; spin: number; yaw: number; tiltX: number; tiltY: number }, flying: boolean, t: number): void {
+function drawDrone(g: Ctx, d: { x: number; y: number; z: number; spin: number; yaw: number; tiltX: number; tiltY: number }, airborne: boolean, t: number, color: string, piloted: boolean): void {
   const sh = Math.max(0.28, 1 - (d.z / ALT_MAX) * 0.55)
   g.fillStyle = `rgba(32,26,23,${0.24 * sh})`
   g.beginPath(); g.ellipse(d.x, d.y, R * 0.85 * sh, R * 0.6 * sh, 0, 0, Math.PI * 2); g.fill()
@@ -209,7 +221,7 @@ function drawDrone(g: Ctx, d: { x: number; y: number; z: number; spin: number; y
     g.fillStyle = '#2a2e33'; g.beginPath(); g.arc(rx, ry, 20, 0, Math.PI * 2); g.fill()
     g.lineWidth = 2.5; g.strokeStyle = INK; g.stroke()
     g.save(); g.translate(rx, ry); g.rotate(d.spin + (ax * ay > 0 ? 0 : 1.2))
-    if (flying) {
+    if (airborne) {
       g.globalAlpha = 0.28; g.fillStyle = '#cfd3d6'; g.beginPath(); g.arc(0, 0, 16, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1
       g.strokeStyle = 'rgba(220,222,226,0.55)'; g.lineWidth = 15; g.lineCap = 'round'
       g.beginPath(); g.moveTo(-14, 0); g.lineTo(14, 0); g.stroke()
@@ -219,15 +231,15 @@ function drawDrone(g: Ctx, d: { x: number; y: number; z: number; spin: number; y
     }
     g.restore()
   }
-  g.fillStyle = theme.colors.sky
+  g.fillStyle = color
   roundRect(g, -23, -19, 46, 38, 11); g.fill(); g.lineWidth = 3; g.strokeStyle = INK; g.stroke()
   g.fillStyle = 'rgba(255,255,255,0.35)'; roundRect(g, -18, -15, 36, 8, 4); g.fill()
   g.fillStyle = '#1c2126'; g.beginPath(); g.arc(0, 12, 8, 0, Math.PI * 2); g.fill(); g.lineWidth = 2; g.strokeStyle = INK; g.stroke()
   g.fillStyle = 'rgba(120,200,235,0.8)'; g.beginPath(); g.arc(-2, 10, 3, 0, Math.PI * 2); g.fill()
-  g.fillStyle = flying ? '#57d06a' : '#e0503e'; g.beginPath(); g.arc(0, -13, 4, 0, Math.PI * 2); g.fill()
+  g.fillStyle = airborne ? '#57d06a' : '#e0503e'; g.beginPath(); g.arc(0, -13, 4, 0, Math.PI * 2); g.fill()
   g.restore()
 
-  if (flying) {
+  if (piloted) {
     g.strokeStyle = 'rgba(247,201,72,0.85)'; g.lineWidth = 3.5; g.setLineDash([8, 7])
     g.beginPath(); g.arc(bx, by, R * hs + 20, t / 400, t / 400 + Math.PI * 2); g.stroke(); g.setLineDash([])
   }

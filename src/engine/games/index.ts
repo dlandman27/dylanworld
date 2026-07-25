@@ -14,7 +14,8 @@ import { createEasyButton } from './easybutton'
 import { createBackgammon } from './backgammon'
 import { createIpad } from './ipad'
 // import { createBasketball } from './basketball'
-import { createDrone } from './drone' // parked — module kept
+import { createDrone } from './drone'
+import { createDroneDock } from './droneDock' // parked — module kept
 // import { createSandbox } from './sandbox' // parked — re-enable in createGames too
 // import { createSoccer } from './soccer' // parked — re-enable in createGames too
 import { createOverhead } from './overhead'
@@ -90,7 +91,14 @@ export function createGames(props: Prop[]): TableGame[] {
     // createSandbox(1520, 3960), // parked — hidden for now
     // createSoccer(), // parked — bring back when the table's bigger
     createHotwheels(),
-    createDrone(3300, 1450, props),   // 🚁 RC quadcopter on its helipad (upper-centre)
+    // 🚁 the drone station — against the top wall, in the gap right of the race
+    // track (directly under the clock is on the track, so it's nudged over)
+    createDroneDock(3400, 250, 1420, 240),
+    createDrone(2840, 260, props, '#5aa0db', 'drone-0'),
+    createDrone(3120, 260, props, '#f0563e', 'drone-1'),
+    createDrone(3400, 260, props, '#b7ce3c', 'drone-2'),
+    createDrone(3680, 260, props, '#a98fd0', 'drone-3'),
+    createDrone(3960, 260, props, '#f47b28', 'drone-4'),
     // ambient cloud/bird shadows — draws only in drawAbove, so it shades every
     // game and prop; placed after the tops so shadows fall on standing pieces too
     createOverhead(),
