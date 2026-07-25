@@ -73,12 +73,12 @@ export function createGames(): TableGame[] {
     createCards(1860, 2700),
     createDice(1310, 3110),
     createBackgammon(1860, 3500),
-    createShuffleboard(4100, 2740),
+    createShuffleboard(6150, 3750),   // bottom-right
     createSpinner(5000, 3690),
     createTop(4250, 1890),
     createTop(2200, 2640, GOLD),
     createTeeth(4950, 2840),
-    createNotes(2950, 2990),
+    createNotes(2500, 4300),   // sitting on the desk (left of the laptop)
     createEasyButton(5400, 4190),
     createIpad(5350, 1590),
     // createBasketball(6100, 3350), // parked — the sports corner, hidden for now
@@ -92,6 +92,6 @@ export function createGames(): TableGame[] {
     createFly(), createFly(), // a couple of ambient houseflies (more reads as "dirty")
     // createSwatter(2800, 2490), // parked — grab it and whack them
     // magnifier LAST so its lens covers the flies (and magnifies them — try it)
-    createMagnifier(3000, 2350),
+    createMagnifier(4150, 2720),   // moved into the spot the shuffleboard vacated
   ]
 }

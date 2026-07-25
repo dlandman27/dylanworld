@@ -48,6 +48,9 @@ export function createNotes(px: number, py: number): TableGame {
     } catch { /* private mode */ }
   }
 
+  // the right-click wheel's "Clear" wipes every doodle off the table
+  window.addEventListener('dw-clear-doodles', () => { topStrokes = []; notes.length = 0; save() })
+
   const onPad = (x: number, y: number): boolean =>
     Math.abs(x - px) < NW / 2 + 6 && Math.abs(y - py) < NW / 2 + 6
   const onDogEar = (x: number, y: number): boolean =>

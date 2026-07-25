@@ -13,6 +13,7 @@ import { setPointer } from './engine/pointer'
 import { initNet, sendCursor } from './engine/net'
 import { drawPeerCursors } from './ui/peerCursors'
 import { initTableHost } from './ui/tableHost'
+import { initRadialMenu } from './ui/radialMenu'
 // Parked experiments (island map, scenery, town square):
 // import { drawIsland } from './engine/island'
 // Landmark "houses" are parked for now — we'll place the sites later.
@@ -38,6 +39,7 @@ initCursorShop()   // browse & equip cursors (prices 0 for now)
 initAudio()        // clunks arm on the first pointer press
 initNet()          // joins ?room=XXXX if present
 initTableHost()    // "host a table" chip
+initRadialMenu()   // secret right-click wheel (emotes, effects, party, clear)
 let last = performance.now()
 
 /**
