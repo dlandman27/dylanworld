@@ -27,6 +27,7 @@ import { createBed } from './bed'
 import { createDesk } from './desk'
 import { createBookshelf } from './bookshelf'
 import type { BookshelfGame } from './bookshelf'
+import { createTv } from './tv'
 import { initProjectCard } from '../../ui/projectCard'
 import { createGallery } from './gallery'
 import type { GalleryGame } from './gallery'
@@ -52,6 +53,7 @@ export function createGames(): TableGame[] {
   let shelf: BookshelfGame | null = null
   const projCard = initProjectCard(() => shelf?.closeBook())
   shelf = createBookshelf(4700, 210, (p) => projCard.show(p), () => projCard.hide())
+  const tv = createTv(5620, 290)   // the rsotw CRT, back against the top wall
   // the career gallery on the west wall: press a framed job to open its card
   let gallery: GalleryGame | null = null
   const expCard = initExperienceCard(() => gallery?.closeFrame())
@@ -62,6 +64,7 @@ export function createGames(): TableGame[] {
     createBed(5900, 2350),   // head rail sits ON the east wall seam (6600)
     createDesk(2900, 4350),
     shelf,
+    tv,
     gallery,
     createDresser(250, 1500),
     createToyChest(800, 4260),
@@ -80,7 +83,7 @@ export function createGames(): TableGame[] {
     createTeeth(4950, 2840),
     createNotes(2500, 4300),   // sitting on the desk (left of the laptop)
     createEasyButton(5400, 4190),
-    createIpad(5350, 1590),
+    createIpad(5650, 2300),   // sitting on the bed
     // createBasketball(6100, 3350), // parked — the sports corner, hidden for now
     // createSandbox(1520, 3960), // parked — hidden for now
     // createSoccer(), // parked — bring back when the table's bigger
