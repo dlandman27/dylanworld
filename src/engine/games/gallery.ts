@@ -160,6 +160,25 @@ export function createGallery(
         poly(g, [OTL, OTR, OBR, OBL], '', 3.5)
         edge(g, OTL, OTR, 'rgba(255,255,255,0.4)', 2)
       }
+
+      // ---- "MY WORK" plaque under the frames, turned to match the paintings ----
+      {
+        const { W, ax, ux } = axesAt(0.51, 0.56)
+        const LW = 150, LH = 44   // long ALONG the wall (like the frames), thin across
+        const cTL = W(-LW, LH), cTR = W(LW, LH), cBR = W(LW, -LH), cBL = W(-LW, -LH)
+        poly(g, [cTL, cTR, cBR, cBL].map((p) => ({ x: p.x + 12, y: p.y + 15 })), 'rgba(32,26,23,0.2)')
+        poly(g, [cTL, cTR, cBR, cBL], '#3a3733', 0)   // dark museum plaque
+        const cc = W(0, 0)
+        g.save()
+        g.translate(cc.x, cc.y)
+        g.transform(ax.x, ax.y, -ux.x, -ux.y, 0, 0)   // orient exactly like the frame logos
+        g.fillStyle = '#f7c948'
+        g.font = `900 52px "Arial Black", ${theme.fonts.display}, sans-serif`
+        g.textAlign = 'center'; g.textBaseline = 'middle'
+        g.fillText('MY WORK', 0, 0)
+        g.restore()
+        poly(g, [cTL, cTR, cBR, cBL], '', 3.5)
+      }
     },
   }
 }

@@ -1,59 +1,31 @@
 import { CURSORS, faceImg, anyPaint, GOLD } from '../config/cursors'
 import type { CursorDef } from '../config/cursors'
 import { theme } from '../config/theme'
+import { pop } from './audio'
 
-// ---- ownership + wallet (the shop spends against this; prices are 0 for now) ----
-const OWNED_KEY = 'dw-cursors-owned'
+// ---- equipped cursor (persisted). No economy — every cursor is free to pick. ----
 const EQUIP_KEY = 'dw-cursor-equipped'
-const COINS_KEY = 'dw-coins'
 const INK = theme.colors.ink
 
-interface Wallet { owned: Set<string>; equipped: string; coins: number }
-
-function load(): Wallet {
-  let owned = new Set<string>(['arrow-ink'])
-  let equipped = 'arrow-ink'
-  let coins = 0
-  try {
-    const o = JSON.parse(localStorage.getItem(OWNED_KEY) || '[]')
-    if (Array.isArray(o)) owned = new Set<string>(['arrow-ink', ...o])
-    equipped = localStorage.getItem(EQUIP_KEY) || equipped
-    coins = parseInt(localStorage.getItem(COINS_KEY) || '0', 10) || 0
-  } catch { /* fresh visitor */ }
-  return { owned, equipped, coins }
-}
-const wallet = load()
-function save(): void {
-  try {
-    localStorage.setItem(OWNED_KEY, JSON.stringify([...wallet.owned]))
-    localStorage.setItem(EQUIP_KEY, wallet.equipped)
-    localStorage.setItem(COINS_KEY, String(wallet.coins))
-  } catch { /* private mode */ }
-}
+let equipped = 'arrow-ink'
+try { equipped = localStorage.getItem(EQUIP_KEY) || equipped } catch { /* fresh visitor */ }
 
 const byId = (id: string): CursorDef | undefined => CURSORS.find(k => k.id === id)
 const listeners: Array<() => void> = []
 export function onCursorChange(fn: () => void): void { listeners.push(fn) }
 const emit = (): void => listeners.forEach(fn => fn())
 
-export function getWallet(): Wallet { return wallet }
-export function isOwned(id: string): boolean { return wallet.owned.has(id) }
-export function equippedId(): string { return wallet.equipped }
+export function equippedId(): string { return equipped }
 
-/** Try to buy (if needed) and equip a cursor. Returns false if too poor. */
-export function buyEquip(id: string): boolean {
+/** Equip a cursor by id — all cursors are free to pick. */
+export function equipCursor(id: string): void {
   const cur = byId(id)
-  if (!cur) return false
-  if (!wallet.owned.has(id)) {
-    if (wallet.coins < cur.price) return false
-    wallet.coins -= cur.price
-    wallet.owned.add(id)
-  }
-  wallet.equipped = id
+  if (!cur) return
+  equipped = id
+  try { localStorage.setItem(EQUIP_KEY, id) } catch { /* private mode */ }
   applyCursor(cur)
-  save()
+  pop()
   emit()
-  return true
 }
 
 // ---- render a cursor sticker to a data URL and apply it as the CSS cursor ----
@@ -85,7 +57,7 @@ function applyCursor(cur: CursorDef): void {
 }
 faceImg.addEventListener('load', () => {
   for (const k of Object.keys(urlCache)) if (k.startsWith('dylan@')) delete urlCache[k]
-  const cur = byId(wallet.equipped)
+  const cur = byId(equipped)
   if (cur && cur.id === 'dylan') applyCursor(cur)
   emit()
 })
@@ -204,22 +176,21 @@ function fireClick(cur: CursorDef, x: number, y: number): void {
 
 /** Start the cursor system: apply the equipped cursor and wire trails/clicks. */
 export function initCursors(): void {
-  const cur = byId(wallet.equipped) || CURSORS[0]
-  wallet.equipped = cur.id
-  wallet.owned.add(cur.id)
+  const cur = byId(equipped) || CURSORS[0]
+  equipped = cur.id
   applyCursor(cur)
 
   let acc = 0
   let lx = 0, ly = 0, has = false
   window.addEventListener('pointermove', (e) => {
-    const active = byId(wallet.equipped)
+    const active = byId(equipped)
     if (!active || active.fx.trail === 'none') { lx = e.clientX; ly = e.clientY; has = true; return }
     if (has) acc += Math.hypot(e.clientX - lx, e.clientY - ly)
     lx = e.clientX; ly = e.clientY; has = true
     if (acc >= active.fx.every) { acc = 0; emitTrail(active, e.clientX, e.clientY) }
   })
   window.addEventListener('pointerdown', (e) => {
-    const active = byId(wallet.equipped)
+    const active = byId(equipped)
     if (active) fireClick(active, e.clientX, e.clientY)
   })
 }

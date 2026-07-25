@@ -39,3 +39,19 @@ export function clunk(strength: number): void {
   osc.start(now)
   osc.stop(now + 0.1)
 }
+
+/** A short bright pick/pop — for UI toggles like equipping a cursor. */
+export function pop(): void {
+  if (!ctx || ctx.state !== 'running') return
+  const now = ctx.currentTime
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(520, now)
+  osc.frequency.exponentialRampToValueAtTime(900, now + 0.06)
+  gain.gain.setValueAtTime(0.14, now)
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12)
+  osc.connect(gain).connect(ctx.destination)
+  osc.start(now)
+  osc.stop(now + 0.13)
+}

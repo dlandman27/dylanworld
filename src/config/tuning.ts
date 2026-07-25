@@ -8,7 +8,7 @@ export const tuning: Tuning = {
   propFriction: 2.2,
   restitution: 0.55,
   cameraLag: 4.0,
-  paperFriction: 3.0,
+  paperFriction: 2.1,
   plowForce: 1.15,
   flingPower: 14,
   letterReturnDelay: 1.4,

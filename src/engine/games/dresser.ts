@@ -1,7 +1,23 @@
 import { theme } from '../../config/theme'
 import { spark, registerObstacleProvider } from '../physics'
+import { toggleCursorShop, isCursorShopOpen, notifyDresserToggle } from '../../ui/cursorShop'
+import { CURSORS } from '../../config/cursors'
 import type { TableGame } from './shared'
 import { INK, roundRect } from './shared'
+
+// the open drawer is stuffed with overlapping cursor stickers (dupes ok) — a
+// deterministic scatter, so it fills the drawer and never shimmers frame-to-frame
+const DRAWER_POOL = CURSORS.filter((k) => k.id !== 'dylan')
+const dhash = (n: number): number => {
+  let h = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16
+  return (h >>> 0) / 4294967296
+}
+const DRAWER_PILE = Array.from({ length: 90 }, (_, i) => ({
+  u: dhash(i * 3 + 1),
+  v: dhash(i * 3 + 2),
+  rot: (dhash(i * 3 + 3) - 0.5) * 0.9,
+  cur: DRAWER_POOL[(dhash(i * 7 + 5) * DRAWER_POOL.length) | 0],
+}))
 
 // The dresser against the west wall. From above you see its wooden top (with a
 // doily and a little framed doodle) and its drawer fronts as a side band facing
@@ -29,18 +45,16 @@ export function createDresser(cx: number, cy: number): TableGame {
     id: 'dresser',
     onDown(x, y) {
       if (!inside(x, y)) return false
-      open = !open
+      // the cursor picker lives in the DOM — the dresser is its home in the room
+      notifyDresserToggle()
+      open = toggleCursorShop()
       spark(x0 + DR_W + BAND, cy, 0.12)
-      if (open) {
-        // the shop lives in the DOM — the dresser is its home in the room
-        const btn = document.querySelector<HTMLButtonElement>('.dw-shop-btn')
-        btn?.click()
-      }
       return true
     },
     onMove() {},
     onUp() {},
     update(dt) {
+      open = isCursorShopOpen()   // stay in sync if the picker is closed via "done"
       ext += ((open ? 190 : 0) - ext) * Math.min(1, dt * 8)
     },
     draw(g) {
@@ -55,16 +69,21 @@ export function createDresser(cx: number, cy: number): TableGame {
         g.fillStyle = '#5c3a1e'                                   // inside the drawer
         roundRect(g, dx + 12, cy - dw / 2 + 12, BAND + ext - 10, dw - 24, 6); g.fill()
         g.lineWidth = 2; g.stroke()
-        // folded cursor "skins" stacked inside
-        const folds = [theme.colors.coral, theme.colors.sky, theme.colors.lime, theme.colors.purple]
-        folds.forEach((col, i) => {
-          const fy = cy - dw / 2 + 34 + i * ((dw - 62) / folds.length)
-          g.fillStyle = col
-          roundRect(g, dx + 24, fy, Math.max(20, BAND + ext - 40), 44, 8); g.fill()
-          g.lineWidth = 2.2; g.strokeStyle = INK; g.stroke()
-          g.strokeStyle = 'rgba(32,26,23,0.3)'; g.lineWidth = 1.6
-          g.beginPath(); g.moveTo(dx + 30, fy + 22); g.lineTo(dx + BAND + ext - 22, fy + 22); g.stroke()
-        })
+        // the drawer stuffed full of overlapping cursors, clipped to the box
+        if (ext > 60) {
+          g.save()
+          roundRect(g, dx + 12, cy - dw / 2 + 12, BAND + ext - 10, dw - 24, 6); g.clip()
+          const ix0 = dx + 20, iy0 = cy - dw / 2 + 20
+          const iw = BAND + ext - 22, ih = dw - 40, cell = 66
+          for (const it of DRAWER_PILE) {
+            g.save()
+            g.translate(ix0 + it.u * iw, iy0 + it.v * ih)
+            g.rotate(it.rot); g.scale(cell / 32, cell / 32); g.translate(-16, -16)
+            it.cur.draw(g)
+            g.restore()
+          }
+          g.restore()
+        }
         // drawer front rides on the end
         g.fillStyle = '#d3a163'
         roundRect(g, dx + BAND + ext - 8, cy - dw / 2 - 6, 26, dw + 12, 8); g.fill()
@@ -134,6 +153,28 @@ export function createDresser(cx: number, cy: number): TableGame {
       g.bezierCurveTo(-52, -8, -30, -52, 0, -22)
       g.bezierCurveTo(30, -52, 52, -8, 0, 34)
       g.stroke()
+      g.restore()
+
+      // ---- "cursors" placard on the top — signals what the drawer holds ----
+      g.save()
+      g.translate(cx - 10, cy - 20)
+      g.rotate(-0.04)
+      g.fillStyle = 'rgba(32,26,23,0.2)'; roundRect(g, -100, -24, 208, 58, 12); g.fill()   // shadow
+      g.fillStyle = theme.colors.card; roundRect(g, -104, -29, 208, 58, 12); g.fill()       // card
+      g.lineWidth = 3; g.strokeStyle = INK; g.lineJoin = 'round'; g.stroke()
+      // a little arrow-cursor sticker on the left (shadow, then white arrow)
+      const arrow = (ox: number, oy: number): void => {
+        g.beginPath()
+        g.moveTo(ox, oy); g.lineTo(ox, oy + 22); g.lineTo(ox + 5.5, oy + 17); g.lineTo(ox + 9.5, oy + 26)
+        g.lineTo(ox + 12.5, oy + 24.5); g.lineTo(ox + 8.5, oy + 15.5); g.lineTo(ox + 16, oy + 15.5); g.closePath()
+      }
+      arrow(-84.6, -11.6); g.fillStyle = INK; g.fill()
+      arrow(-86, -13); g.fillStyle = '#fefaf0'; g.fill(); g.lineWidth = 2; g.strokeStyle = INK; g.stroke()
+      // label
+      g.fillStyle = INK
+      g.font = `900 27px "Arial Black", ${theme.fonts.display}, sans-serif`
+      g.textAlign = 'left'; g.textBaseline = 'middle'
+      g.fillText('CURSORS', -48, 4)
       g.restore()
     },
   }
