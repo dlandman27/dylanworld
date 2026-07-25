@@ -13,7 +13,8 @@ import { createHotwheels } from './hotwheels'
 import { createEasyButton } from './easybutton'
 import { createBackgammon } from './backgammon'
 import { createIpad } from './ipad'
-// import { createBasketball } from './basketball' // parked — module kept
+// import { createBasketball } from './basketball'
+import { createDrone } from './drone' // parked — module kept
 // import { createSandbox } from './sandbox' // parked — re-enable in createGames too
 // import { createSoccer } from './soccer' // parked — re-enable in createGames too
 import { createOverhead } from './overhead'
@@ -38,12 +39,13 @@ import { createPlant } from './plant'
 // Dominoes are parked for now — module kept, re-register to bring them back.
 // import { createDominoes } from './dominoes'
 
+import type { Prop } from '../../types'
 export type { TableGame } from './shared'
 
 // Every game on the table. Draw order = array order; pointer hit-testing runs in
 // REVERSE (topmost first). New games: create src/engine/games/<name>.ts with the
 // TableGame interface and register it here — see .claude/skills/new-game.
-export function createGames(): TableGame[] {
+export function createGames(props: Prop[]): TableGame[] {
   // the envelope opens the contact card; dismissing the card closes the envelope
   let mail: MailGame | null = null
   const card = initContactCard(() => mail?.close())
@@ -88,6 +90,7 @@ export function createGames(): TableGame[] {
     // createSandbox(1520, 3960), // parked — hidden for now
     // createSoccer(), // parked — bring back when the table's bigger
     createHotwheels(),
+    createDrone(3300, 1450, props),   // 🚁 RC quadcopter on its helipad (upper-centre)
     // ambient cloud/bird shadows — draws only in drawAbove, so it shades every
     // game and prop; placed after the tops so shadows fall on standing pieces too
     createOverhead(),

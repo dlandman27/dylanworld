@@ -6,6 +6,7 @@ import { drawTable } from './engine/table'
 import { createGames } from './engine/games'
 import { bindLens } from './engine/games/magnifier'
 import { driveTarget } from './engine/games/hotwheels'
+import { droneTarget } from './engine/games/drone'
 import { initCursors } from './engine/cursor'
 import { initCursorShop } from './ui/cursorShop'
 import { initAudio } from './engine/audio'
@@ -32,7 +33,7 @@ resize()
 
 const camera = createCamera()
 const props = createProps()
-const games = createGames()
+const games = createGames(props)
 const input = createInput(canvas, camera, props, games)
 initCursors()      // custom hand-drawn cursor + trail/click fx
 initCursorShop()   // browse & equip cursors (prices 0 for now)
@@ -76,7 +77,7 @@ function frame(now: number): void {
   stepZoom(camera, canvas, dt)               // ease zoom toward its target
   updateCameraPan(camera, input, canvas, dt) // cursor drags/glides the table
   // while driving a car, the camera rides along
-  const drive = driveTarget()
+  const drive = driveTarget() || droneTarget()
   if (drive && !input.panning) {
     const follow = 1 - Math.exp(-4 * dt)
     camera.pos.x += (drive.x - camera.pos.x) * follow

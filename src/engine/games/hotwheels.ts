@@ -1,6 +1,7 @@
 import { theme } from '../../config/theme'
 import { world } from '../../config/world'
 import { spark, registerObstacleProvider, allObstacles } from '../physics'
+import { showVehicleHelp, hideVehicleHelp } from '../../ui/vehicleHelp'
 import type { Ctx, TableGame } from './shared'
 import { INK, roundRect } from './shared'
 
@@ -126,7 +127,7 @@ export function createHotwheels(): TableGame {
 
   window.addEventListener('keydown', (e) => {
     if (controlling === -1) return
-    if (e.code === 'Escape') { controlling = -1; return }
+    if (e.code === 'Escape') { controlling = -1; hideVehicleHelp(); return }
     const k = KEYMAP[e.code]
     if (k) { keys[k] = true; e.preventDefault() }
   })
@@ -134,6 +135,8 @@ export function createHotwheels(): TableGame {
     const k = KEYMAP[e.code]
     if (k) keys[k] = false
   })
+  // another vehicle (the drone) took control → hop out of the car
+  window.addEventListener('dw-vehicle-claim', (e) => { if ((e as CustomEvent).detail !== 'car') { controlling = -1; hideVehicleHelp() } })
 
   // marbles/coins/ball carom off the cars, launched by the car's own velocity
   registerObstacleProvider(() =>
@@ -179,6 +182,8 @@ export function createHotwheels(): TableGame {
         if (Math.hypot(x - cars[i].x, y - cars[i].y) < CAR_LEN) {
           controlling = controlling === i ? -1 : i // hop in / out / switch cars
           keys.up = keys.down = keys.left = keys.right = false
+          if (controlling !== -1) { window.dispatchEvent(new CustomEvent('dw-vehicle-claim', { detail: 'car' })); showVehicleHelp('car') }
+          else hideVehicleHelp()
           return true
         }
       }
