@@ -12,6 +12,11 @@ Host a table, friends join via room link (`?room=XXXX`), play together.
       spectating, drop-in/out (leave chip, Escape, disconnect auto-free, new game,
       host migration)
       - [ ] Extend seat layer to other toys (dice, cards, backgammon)
+      - [ ] Co-op chess polish — keyframe vs optimistic move: a guest's move can
+            briefly snap back if the host's ~2s gstate keyframe fires before the
+            host applies the move. Add a monotonic move counter to gstate so
+            guests ignore stale snapshots. Invisible on localhost; latency-only
+            (same class as the Phase 3 release grace window).
 - [x] Phase 3 — shared physics SHIPPED: host-authoritative simulation, guests
       send inputs, host broadcasts snapshots (~20/s), guests interpolate +
       predict their held prop (marbles/coins/chips/ball synced)
