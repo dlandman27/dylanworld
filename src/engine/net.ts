@@ -66,6 +66,9 @@ function upsertPeerCursor(id: string, x: number, y: number, cur?: string, name?:
 function connect(code: string): void {
   room = code
   host = false
+  remoteMap.clear()
+  remoteGrabMap.clear()
+  releaseQueue.length = 0
   // party: 'table' = the kebab-cased Durable Object binding name ("Table")
   socket = new PartySocket({ host: HOST, room: code, party: 'table' })
   socket.addEventListener('message', (e: MessageEvent) => {
