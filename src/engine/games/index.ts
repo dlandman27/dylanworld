@@ -14,6 +14,9 @@ import { createMarbleRun } from './marblerun'
 import { createRetroConsole } from './retroConsole'
 import { createBeanbag } from './beanbag'
 import { createWhiteboard } from './whiteboard'
+import { createLightSwitch } from './lightSwitch'
+import { createTent } from './tent'
+import { initAboutCard } from '../../ui/aboutCard'
 import { createEasyButton } from './easybutton'
 import { createBackgammon } from './backgammon'
 import { createIpad } from './ipad'
@@ -61,6 +64,7 @@ export function createGames(props: Prop[]): TableGame[] {
   const projCard = initProjectCard(() => shelf?.closeBook())
   shelf = createBookshelf(4700, 210, (p) => projCard.show(p), () => projCard.hide())
   const tv = createTv(5620, 290)   // the rsotw CRT, back against the top wall
+  const aboutCard = initAboutCard(() => {})   // the desk laptop opens Dylan's bio/skills
   // the career gallery on the west wall: press a framed job to open its card
   let gallery: GalleryGame | null = null
   const expCard = initExperienceCard(() => gallery?.closeFrame())
@@ -69,7 +73,7 @@ export function createGames(props: Prop[]): TableGame[] {
     // bedroom furniture — drawn FIRST so every game piece sits on top of it;
     // hit-testing runs in reverse, so games and props win contested presses
     createBed(5900, 2350),   // head rail sits ON the east wall seam (6600)
-    createDesk(2900, 4350),
+    createDesk(2900, 4350, () => aboutCard.show()),
     shelf,
     tv,
     gallery,
@@ -81,6 +85,8 @@ export function createGames(props: Prop[]): TableGame[] {
     createBeanbag(5770, 1540, '#2fb0a3', -0.16),
     createRetroConsole(5620, 780),
     createWhiteboard(),   // dry-erase board on the east wall (a Chalkboard wink)
+    createLightSwitch(),  // east wall by the bed — flips the room day↔night
+    createTent(2650, 1650),   // play teepee filling the upper-middle floor
     mail,
     // 🎲 board-game corner — clustered on the game rug (lower-left)
     createChess(750, 2680),

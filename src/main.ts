@@ -10,6 +10,7 @@ import { droneTarget } from './engine/games/drone'
 import { initCursors } from './engine/cursor'
 import { initCursorShop } from './ui/cursorShop'
 import { initAudio } from './engine/audio'
+import { updateDayNight, drawNight } from './engine/daynight'
 import { setPointer } from './engine/pointer'
 import { initNet, sendCursor } from './engine/net'
 import { drawPeerCursors } from './ui/peerCursors'
@@ -89,10 +90,12 @@ function frame(now: number): void {
   setPointer(input.world.x, input.world.y)    // publish cursor pos for ambient critters
   sendCursor(input.world.x, input.world.y)
   updatePhysics(props, input, camera, dt)
+  updateDayNight(dt)
   for (const g of games) g.update(dt, now)
 
   renderWorld(camera, now)
   drawImpacts(ctx, camera, canvas)
+  drawNight(ctx, camera, canvas, now)   // darken + light pools when night is on
   drawPeerCursors(ctx, camera, canvas)
 
   requestAnimationFrame(frame)

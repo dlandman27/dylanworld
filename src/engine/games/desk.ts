@@ -11,7 +11,7 @@ const DESK_H = 430
 const WOOD = '#b5915a'
 const WOOD_D = '#9a7747'
 
-export function createDesk(cx: number, cy: number): TableGame {
+export function createDesk(cx: number, cy: number, onOpen?: () => void): TableGame {
   const dx0 = cx - DESK_W / 2, dy0 = cy - DESK_H / 2
   const lap = { x: cx - 210, y: cy + 10, rot: -0.05 }   // laptop centre
   const mug = { x: cx + 230, y: cy - 90 }
@@ -38,7 +38,7 @@ export function createDesk(cx: number, cy: number): TableGame {
       if (onLaptop(x, y)) {
         lapPress = 1
         spark(lap.x, lap.y, 0.1)
-        window.open('/resume.html', '_blank')
+        onOpen?.()
         return true
       }
       if (onChair(x, y)) { chairWiggle = 1; return true }

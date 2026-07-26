@@ -384,34 +384,31 @@ function drawDoodle(ctx: Ctx, P: (t: number, s: number) => V, tc: number, sc: nu
 }
 
 /** A round wall clock showing the REAL time (the iPad rule: authentic specifics).
- * It PROJECTS off the wall: a case back at the wall plane, the face pushed
- * toward the room, and the case's side showing as a shaded crescent between
- * them — same move as the wainscot slab, so it reads mounted, not stuck on. */
+ * It's drawn IN the wall plane — foreshortened (squished up-the-wall + sheared to
+ * the fold) so it reads as mounted on the far wall, not a disc lying flat. */
 function drawClock(ctx: Ctx, P: (t: number, s: number) => V, tc: number, sc: number): void {
-  const w = fixtureFrame(P, tc, sc)
-  const c = w(0, 0)
-  const R = 92
-  const CD = 34                                               // how far the case stands off the wall
-  const up = w(0, 1)
-  let ix = -(up.x - c.x), iy = -(up.y - c.y)                  // inward: off the wall toward the room
-  const il = Math.hypot(ix, iy) || 1; ix /= il; iy /= il
-  const fc = { x: c.x + ix * CD, y: c.y + iy * CD }           // face centre, proud of the wall
-  const ang = Math.atan2(w(1, 0).y - c.y, w(1, 0).x - c.x)    // local x-axis on screen
-  // cast shadow on the wall (down-right of the projecting body)
-  ctx.fillStyle = 'rgba(32,26,23,0.2)'
-  ctx.beginPath(); ctx.arc(c.x + 11, c.y + 14, R, 0, Math.PI * 2); ctx.fill()
-  // case back at the wall plane — its visible side band faces the wall top and
-  // CATCHES LIGHT (same as the chair rail's bright top face), bounded in ink
+  const c = P(tc, sc)
+  // wall-plane unit axes: alx/aly runs ALONG the wall, ulx/uly runs UP it
+  let alx = P(tc + 0.006, sc).x - P(tc - 0.006, sc).x, aly = P(tc + 0.006, sc).y - P(tc - 0.006, sc).y
+  let l = Math.hypot(alx, aly) || 1; alx /= l; aly /= l
+  let ulx = P(tc, sc + 0.008).x - P(tc, sc - 0.008).x, uly = P(tc, sc + 0.008).y - P(tc, sc - 0.008).y
+  l = Math.hypot(ulx, uly) || 1; ulx /= l; uly /= l
+  const R = 96
+  const SQ = 0.62            // the far wall foreshortens the up-the-wall axis
+  const frame = (ox: number, oy: number): void => { ctx.transform(alx, aly, ulx * SQ, uly * SQ, c.x + ox, c.y + oy) }
+
+  // cast shadow on the wall (offset down-right), same foreshortening
+  ctx.save(); frame(12, 15)
+  ctx.fillStyle = 'rgba(32,26,23,0.2)'; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill()
+  ctx.restore()
+
+  ctx.save(); frame(0, 0)
+  // chunky coral case + cream face
   ctx.fillStyle = theme.colors.coral
-  ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI * 2); ctx.fill()
-  ctx.fillStyle = 'rgba(255,255,255,0.45)'                    // lit side of the case
-  ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI * 2); ctx.fill()
-  ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke()
-  ctx.save()
-  ctx.translate(fc.x, fc.y); ctx.rotate(ang)
-  ctx.fillStyle = theme.colors.coral                          // chunky coral rim (the lit front)
   ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill()
-  ctx.strokeStyle = INK; ctx.lineWidth = 3.5; ctx.stroke()
+  ctx.strokeStyle = INK; ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.stroke()
+  ctx.fillStyle = 'rgba(32,26,23,0.14)'                       // inner shade ring = a little case depth
+  ctx.beginPath(); ctx.arc(0, 0, R * 0.86, 0, Math.PI * 2); ctx.fill()
   ctx.fillStyle = '#fefaf0'
   ctx.beginPath(); ctx.arc(0, 0, R * 0.8, 0, Math.PI * 2); ctx.fill()
   ctx.lineWidth = 2.5; ctx.stroke()
@@ -419,7 +416,7 @@ function drawClock(ctx: Ctx, P: (t: number, s: number) => V, tc: number, sc: num
   for (let i = 0; i < 12; i++) {
     const a2 = (i / 12) * Math.PI * 2
     const big = i % 3 === 0
-    ctx.strokeStyle = INK; ctx.lineWidth = big ? 4 : 2
+    ctx.strokeStyle = INK; ctx.lineWidth = big ? 4 : 2; ctx.lineCap = 'butt'
     ctx.beginPath()
     ctx.moveTo(Math.cos(a2) * R * (big ? 0.62 : 0.68), Math.sin(a2) * R * (big ? 0.62 : 0.68))
     ctx.lineTo(Math.cos(a2) * R * 0.74, Math.sin(a2) * R * 0.74)
