@@ -81,6 +81,23 @@ export function fanfare(): void {
   })
 }
 
+/** A dry-erase marker squeak — for wiping the whiteboard. */
+export function squeak(): void {
+  if (!ctx || ctx.state !== 'running') return
+  const now = ctx.currentTime
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(1150, now)
+  osc.frequency.linearRampToValueAtTime(1950, now + 0.05)
+  osc.frequency.linearRampToValueAtTime(880, now + 0.13)
+  gain.gain.setValueAtTime(0.05, now)
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15)
+  osc.connect(gain).connect(ctx.destination)
+  osc.start(now)
+  osc.stop(now + 0.16)
+}
+
 /** A short bright pick/pop — for UI toggles like equipping a cursor. */
 export function pop(): void {
   if (!ctx || ctx.state !== 'running') return

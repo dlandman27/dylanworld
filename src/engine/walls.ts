@@ -51,6 +51,17 @@ export function westWallP(t: number, s: number): V {
   return lerp(lerp(p0, q0, s), lerp(p1, q1, s), t)
 }
 
+/** Maps EAST-wall space → world coords, matching drawWall(B, C, Bo, Co). `t` runs
+ * top→bottom of the wall (0 = corner at y=0, 1 = y=H); `s` = depth up the wall
+ * (0 = floor seam at x=W, 1 = ceiling out at x=W+D). Exported so the whiteboard
+ * can hang on the wall and hit-test presses in world space. */
+export function eastWallP(t: number, s: number): V {
+  const W = world.width, H = world.height
+  const p0 = { x: W, y: 0 }, p1 = { x: W, y: H }
+  const q0 = { x: W + D, y: -D }, q1 = { x: W + D, y: H + D }
+  return lerp(lerp(p0, q0, s), lerp(p1, q1, s), t)
+}
+
 // deterministic per-cell noise in [0,1) — clouds stay put frame to frame
 function rnd(a: number, b: number): number {
   let h = (Math.imul(a, 73856093) ^ Math.imul(b, 19349663)) >>> 0

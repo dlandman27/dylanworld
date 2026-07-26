@@ -13,6 +13,7 @@ import { createHotwheels } from './hotwheels'
 import { createMarbleRun } from './marblerun'
 import { createRetroConsole } from './retroConsole'
 import { createBeanbag } from './beanbag'
+import { createWhiteboard } from './whiteboard'
 import { createEasyButton } from './easybutton'
 import { createBackgammon } from './backgammon'
 import { createIpad } from './ipad'
@@ -79,6 +80,7 @@ export function createGames(props: Prop[]): TableGame[] {
     createBeanbag(5080, 1500, '#f0563e', 0.15),
     createBeanbag(5770, 1540, '#2fb0a3', -0.16),
     createRetroConsole(5620, 780),
+    createWhiteboard(),   // dry-erase board on the east wall (a Chalkboard wink)
     mail,
     // 🎲 board-game corner — clustered on the game rug (lower-left)
     createChess(750, 2680),
