@@ -1,6 +1,7 @@
 import type { CameraState, InputState, Prop, Vec2 } from '../types'
 import type { TableGame } from './games/shared'
 import { screenToWorld, zoomAt, requestZoom } from './world'
+import { applyRelease } from './physics'
 
 /**
  * The cursor is the only agent in the world. At pointerdown we decide the
@@ -65,33 +66,13 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
     const g = input.grabbed
     if (!g) return
     const disc = g.kind === 'coin' || g.kind === 'chip'
+    let tap = false
     if (disc && grabStart) {
       const moved = Math.hypot(input.screen.x - grabStart.x, input.screen.y - grabStart.y)
-      if (moved < 8 && performance.now() - grabStart.t < 350 && g.tex.x === 0) {
-        // a clean TAP (no drag) flips it — coins land on fate, chips just tumble
-        g.tex.x = 0.0001                       // flip timer starts
-        g.tex.y = Math.random() < 0.5 ? 0 : 1  // heads/tails (or chip front/back)
-        g.vel.x = 0
-        g.vel.y = 0
-      } else if (moved >= 8) {
-        // a carried disc sets down gently — onto a STACK when over another disc
-        // (coins and chips share towers). Align to the column's BOTTOM disc and
-        // sit on top, one sliver (3.2px) higher per disc already there.
-        g.vel.x = 0
-        g.vel.y = 0
-        const column = props.filter(p =>
-          p !== g && (p.kind === 'coin' || p.kind === 'chip') &&
-          Math.abs(p.pos.x - g.pos.x) < g.radius &&
-          Math.abs(p.pos.y - g.pos.y) < g.radius + 50)
-        if (column.length > 0) {
-          const bottom = column.reduce((a, b) => (b.pos.y > a.pos.y ? b : a))
-          g.pos.x = bottom.pos.x
-          g.pos.y = bottom.pos.y - 3.2 * column.length
-        }
-      }
+      tap = moved < 8 && performance.now() - grabStart.t < 350
     }
     grabStart = null
-    g.grabbed = false
+    applyRelease(props, g, tap, g.vel.x, g.vel.y)
     input.grabbed = null
   }
   const twoPointers = (): [Vec2, Vec2] => {

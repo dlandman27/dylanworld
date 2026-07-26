@@ -218,22 +218,75 @@ function collide(a: PhysicsBody, b: PhysicsBody): void {
   }
 }
 
-export function updatePhysics(props: Prop[], input: InputState, cam: CameraState, dt: number): void {
+export interface RemoteGrabber { prop: Prop; x: number; y: number }
+
+/** Drive a grabbed prop toward (x,y): discs ride the cursor exactly, others
+ *  chase it on the fling spring. Does not integrate — caller owns pos/dt/flags. */
+export function applyGrabForce(g: Prop, x: number, y: number): void {
+  if (isDisc(g.kind)) {
+    g.pos.x = x
+    g.pos.y = y
+    g.vel.x = 0
+    g.vel.y = 0
+  } else {
+    g.vel.x = (x - g.pos.x) * tuning.flingPower
+    g.vel.y = (y - g.pos.y) * tuning.flingPower
+  }
+}
+
+/** Authoritative release, shared by the local host input and remote `rel`
+ *  intents. `tap` (discs only) means a clean tap with no drag → flip. */
+export function applyRelease(props: Prop[], g: Prop, tap: boolean, vx: number, vy: number): void {
+  if (isDisc(g.kind)) {
+    if (tap && g.tex.x === 0) {
+      // a clean TAP flips it — coins land on fate, chips just tumble
+      g.tex.x = 0.0001                       // flip timer starts
+      g.tex.y = Math.random() < 0.5 ? 0 : 1  // heads/tails (or chip front/back)
+      g.vel.x = 0
+      g.vel.y = 0
+    } else if (!tap) {
+      // a carried disc sets down gently — onto a STACK when over another disc.
+      // Align to the column's BOTTOM disc, one sliver (3.2px) higher per disc.
+      g.vel.x = 0
+      g.vel.y = 0
+      const column = props.filter(p =>
+        p !== g && isDisc(p.kind) &&
+        Math.abs(p.pos.x - g.pos.x) < g.radius &&
+        Math.abs(p.pos.y - g.pos.y) < g.radius + 50)
+      if (column.length > 0) {
+        const bottom = column.reduce((a, b) => (b.pos.y > a.pos.y ? b : a))
+        g.pos.x = bottom.pos.x
+        g.pos.y = bottom.pos.y - 3.2 * column.length
+      }
+    }
+  } else {
+    g.vel.x = vx
+    g.vel.y = vy
+  }
+  g.grabbed = false
+}
+
+export function updatePhysics(props: Prop[], input: InputState, cam: CameraState, dt: number, remoteGrabbers?: RemoteGrabber[]): void {
   // grabbed prop: coins are PICKED UP (ride the cursor exactly, airborne);
   // everything else chases the cursor on the fling spring
   if (input.grabbed) {
     const g = input.grabbed
-    if (isDisc(g.kind)) {
-      g.pos.x = input.world.x
-      g.pos.y = input.world.y
-      g.vel.x = 0
-      g.vel.y = 0
-    } else {
-      g.vel.x = (input.world.x - g.pos.x) * tuning.flingPower
-      g.vel.y = (input.world.y - g.pos.y) * tuning.flingPower
-    }
+    applyGrabForce(g, input.world.x, input.world.y)
     g.restTime = 0
     g.sleeping = false
+  }
+
+  // remote grabbers: guests holding a prop, driven toward their cursor. Same
+  // spring as the local grab; the local grab wins a contested prop.
+  if (remoteGrabbers) {
+    for (const rg of remoteGrabbers) {
+      const g = rg.prop
+      if (g === input.grabbed) continue   // local grab wins a contested prop
+      applyGrabForce(g, rg.x, rg.y)
+      g.grabbed = true
+      g.restTime = 0
+      g.sleeping = false
+    }
   }
 
   const camDist = tuning.sleepDistance
