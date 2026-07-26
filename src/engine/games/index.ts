@@ -1,6 +1,6 @@
 import type { TableGame } from './shared'
 import { createBlocks } from './blocks'
-import { createChess } from './chess'
+import { createCoopChess } from './coopSession'
 import { createScrabble } from './scrabble'
 import { createShuffleboard } from './shuffleboard'
 import { createDice } from './dice'
@@ -89,7 +89,7 @@ export function createGames(props: Prop[]): TableGame[] {
     createTent(2650, 1650),   // play teepee filling the upper-middle floor
     mail,
     // 🎲 board-game corner — clustered on the game rug (lower-left)
-    createChess(750, 2680),
+    createCoopChess(750, 2680),
     createScrabble(820, 3520),
     createCards(1860, 2700),
     createDice(1310, 3110),

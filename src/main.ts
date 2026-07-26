@@ -7,6 +7,7 @@ import { createGames } from './engine/games'
 import { bindLens } from './engine/games/magnifier'
 import { driveTarget } from './engine/games/hotwheels'
 import { droneTarget } from './engine/games/drone'
+import { stepCoop, coopFocus } from './engine/games/coopSession'
 import { initCursors } from './engine/cursor'
 import { initCursorShop } from './ui/cursorShop'
 import { initAudio } from './engine/audio'
@@ -79,7 +80,8 @@ function frame(now: number): void {
   stepZoom(camera, canvas, dt)               // ease zoom toward its target
   updateCameraPan(camera, input, canvas, dt) // cursor drags/glides the table
   // while driving a car, the camera rides along
-  const drive = driveTarget() || droneTarget()
+  const coopF = coopFocus()
+  const drive = driveTarget() || droneTarget() || (coopF ? { x: coopF.x, y: coopF.y } : null)
   if (drive && !input.panning) {
     const follow = 1 - Math.exp(-4 * dt)
     camera.pos.x += (drive.x - camera.pos.x) * follow
@@ -87,6 +89,7 @@ function frame(now: number): void {
     camera.vel.x = 0
     camera.vel.y = 0
   }
+  if (coopF) camera.zoomTarget = coopF.zoom
   updateInputWorld(input, camera, canvas)     // world point under the cursor, post-pan
   setPointer(input.world.x, input.world.y)    // publish cursor pos for ambient critters
   sendCursor(input.world.x, input.world.y)
@@ -103,6 +106,7 @@ function frame(now: number): void {
     updatePhysics(props, input, camera, dt, netConnected() ? remoteGrabbers(propById) : undefined)
     if (netConnected()) broadcastProps(props, input.world.x, input.world.y)
   }
+  stepCoop(dt)
   updateDayNight(dt)
   for (const g of games) g.update(dt, now)
 
