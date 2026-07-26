@@ -96,7 +96,7 @@ function frame(now: number): void {
     if (netConnected()) {
       for (const r of drainReleases()) {
         const p = propById.get(r.pid)
-        if (p) applyRelease(props, p, r.tap, r.vx, r.vy)
+        if (p && p !== input.grabbed) applyRelease(props, p, r.tap, r.vx, r.vy)
       }
     }
     updatePhysics(props, input, camera, dt, netConnected() ? remoteGrabbers(propById) : undefined)
