@@ -1,7 +1,7 @@
 import type { CameraState } from './types'
 import { createCamera, updateCameraPan, stepZoom } from './engine/world'
 import { createInput, updateInputWorld } from './engine/input'
-import { createProps, updatePhysics, drawProps, drawImpacts } from './engine/physics'
+import { createProps, updatePhysics, drawProps, drawImpacts, interpolateRemoteProps } from './engine/physics'
 import { drawTable } from './engine/table'
 import { createGames } from './engine/games'
 import { bindLens } from './engine/games/magnifier'
@@ -12,7 +12,7 @@ import { initCursorShop } from './ui/cursorShop'
 import { initAudio } from './engine/audio'
 import { updateDayNight, drawNight } from './engine/daynight'
 import { setPointer } from './engine/pointer'
-import { initNet, sendCursor } from './engine/net'
+import { initNet, sendCursor, netConnected, isHost, broadcastProps } from './engine/net'
 import { drawPeerCursors } from './ui/peerCursors'
 import { initTableHost } from './ui/tableHost'
 import { initRadialMenu } from './ui/radialMenu'
@@ -89,7 +89,12 @@ function frame(now: number): void {
   updateInputWorld(input, camera, canvas)     // world point under the cursor, post-pan
   setPointer(input.world.x, input.world.y)    // publish cursor pos for ambient critters
   sendCursor(input.world.x, input.world.y)
-  updatePhysics(props, input, camera, dt)
+  if (netConnected() && !isHost()) {
+    interpolateRemoteProps(props, dt, null)   // guest: watch the host's table
+  } else {
+    updatePhysics(props, input, camera, dt)
+    if (netConnected()) broadcastProps(props, input.world.x, input.world.y)
+  }
   updateDayNight(dt)
   for (const g of games) g.update(dt, now)
 

@@ -1,5 +1,6 @@
 import type { CameraState, InputState, PhysicsBody, Prop, PropKind, Vec2 } from '../types'
 import { clunk } from './audio'
+import { remoteTargets } from './net'
 // character removed: the cursor grabs/flings props and scatters ducks directly.
 import { tuning } from '../config/tuning'
 import { theme } from '../config/theme'
@@ -346,6 +347,29 @@ export function updatePhysics(props: Prop[], input: InputState, cam: CameraState
   for (let i = impacts.length - 1; i >= 0; i--) {
     impacts[i].age += dt
     if (impacts[i].age >= impacts[i].max) impacts.splice(i, 1)
+  }
+}
+
+/** Guest side: ease shared props toward the host's latest snapshot targets.
+ *  `skip` is the one prop this client is predicting locally (its held prop) and
+ *  is left alone. Disc lift is derived from the grabbed flag. */
+export function interpolateRemoteProps(props: Prop[], dt: number, skip: Prop | null): void {
+  const targets = remoteTargets()
+  const ease = Math.min(1, dt * 14)
+  for (const p of props) {
+    if (p === skip) continue
+    const t = targets.get(p.id)
+    if (!t) continue
+    p.pos.x += (t.x - p.pos.x) * ease
+    p.pos.y += (t.y - p.pos.y) * ease
+    p.rotation += (t.rot - p.rotation) * ease
+    p.tex.x = t.texx
+    p.tex.y = t.texy
+    p.grabbed = t.grabbed
+    if (isDisc(p.kind)) p.lift += ((p.grabbed ? 1 : 0) - p.lift) * ease
+    p.vel.x = 0
+    p.vel.y = 0
+    p.sleeping = false
   }
 }
 
