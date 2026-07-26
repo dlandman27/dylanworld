@@ -13,6 +13,10 @@ Host a table, friends join via room link (`?room=XXXX`), play together.
 - [x] Phase 3 — shared physics SHIPPED: host-authoritative simulation, guests
       send inputs, host broadcasts snapshots (~20/s), guests interpolate +
       predict their held prop (marbles/coins/chips/ball synced)
+- [ ] Phase 3 polish — release grace window: on a guest, keep predicting a
+      just-thrown prop for ~1 RTT so it doesn't briefly snap back to a stale
+      snapshot before the host's post-release snapshots land. Invisible on
+      localhost; only shows under real network latency — tune live over the net.
 - [ ] Phase 3 follow-up — per-game/toy sync (chess, dice, plinko, drone,
       letter blocks) is the next pass
 
