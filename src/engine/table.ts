@@ -162,44 +162,126 @@ function drawRug(ctx: Ctx): void {
   ctx.restore()
 }
 
-// Rectangular kid's area rugs that ZONE the floor — each pulls a cluster of toys
-// together ("board games here", "reading nook there") and warms the bare boards.
-interface AreaRug { cx: number; cy: number; w: number; h: number; tilt: number; field: string; border: string; stripe: string }
-const zoneRugs: AreaRug[] = [
-  // the board-game corner (lower-left) — felt-green field, cream border, coral stripe
-  { cx: 1280, cy: 3120, w: 2100, h: 1560, tilt: 0.03, field: '#6f9a55', border: '#efe4c4', stripe: '#c9532f' },
-  // (the gaming lounge rug is custom — see drawArcadeRug)
-]
+// The board-game corner (lower-left) is a RAISED felt table ringed by red-velvet
+// barstools — the chess / Scrabble / backgammon / cards sit ON it. Same footprint
+// (and felt palette) as the old zone rug it replaces, so the games keep their
+// spots; the depth is faked the house way — a tall wood side-band, little front
+// legs, and a hard offset shadow (see blocks.ts), never a side-view or a blur.
+const GT_CX = 1280, GT_CY = 3120, GT_W = 2100, GT_H = 1560, GT_TILT = 0.03
+const FELT = '#6f9a55', FELT_BORDER = '#efe4c4', FELT_STRIPE = '#c9532f'
+const WOOD_TOP = '#d3a163', WOOD_SIDE = '#b5915a'
+const VELVET = '#a8283c', VELVET_D = '#7d1c2b'   // plush red barstool cushion
+const TAU = Math.PI * 2
 
-function drawAreaRug(ctx: Ctx, r: AreaRug): void {
-  ctx.save()
-  ctx.translate(r.cx, r.cy); ctx.rotate(r.tilt); ctx.translate(-r.cx, -r.cy)
-  const x0 = r.cx - r.w / 2, y0 = r.cy - r.h / 2
-
-  // soft offset shadow — the rug lies flat on the boards
-  roundRect(ctx, x0 + 10, y0 + 16, r.w, r.h, 26); ctx.fillStyle = 'rgba(32,26,23,0.15)'; ctx.fill()
-
-  // combed fringe along the two short (top/bottom) ends
-  ctx.strokeStyle = r.border; ctx.lineWidth = 6; ctx.lineCap = 'round'
-  const n = Math.round(r.w / 26)
-  for (let i = 0; i <= n; i++) {
-    const fx = x0 + (r.w * i) / n
-    ctx.beginPath(); ctx.moveTo(fx, y0); ctx.lineTo(fx, y0 - 22); ctx.stroke()
-    ctx.beginPath(); ctx.moveTo(fx, y0 + r.h); ctx.lineTo(fx, y0 + r.h + 22); ctx.stroke()
+/** A plush red-velvet barstool seen from above: wooden legs poking out below a
+ *  round tufted cushion with piping, a centre button and a soft velvet sheen. */
+function drawBarstool(ctx: Ctx, cx: number, cy: number, r: number): void {
+  const DEPTH = 18
+  // ground shadow — hard offset, no blur
+  ctx.beginPath(); ctx.ellipse(cx + 7, cy + DEPTH + 9, r, r * 0.94, 0, 0, TAU)
+  ctx.fillStyle = 'rgba(32,26,23,0.20)'; ctx.fill()
+  // three wooden legs splaying out below the seat (drawn before the cushion)
+  ctx.lineCap = 'round'
+  for (const a of [Math.PI * 0.62, Math.PI * 0.5, Math.PI * 0.38]) {
+    const lx = cx + Math.cos(a) * r * 0.7, ly = cy + Math.sin(a) * r * 0.7
+    const ex = cx + Math.cos(a) * r * 1.16, ey = cy + Math.sin(a) * r * 1.16 + DEPTH
+    ctx.strokeStyle = INK; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(ex, ey); ctx.stroke()
+    ctx.strokeStyle = WOOD_SIDE; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(ex, ey); ctx.stroke()
   }
+  // cushion thickness — the seat body offset down for the raised plush read
+  ctx.beginPath(); ctx.ellipse(cx + DEPTH * 0.3, cy + DEPTH, r, r * 0.96, 0, 0, TAU)
+  ctx.fillStyle = VELVET_D; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.lineJoin = 'round'; ctx.stroke()
+  // cushion top
+  ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.96, 0, 0, TAU)
+  ctx.fillStyle = VELVET; ctx.fill(); ctx.lineWidth = 3.5; ctx.strokeStyle = INK; ctx.stroke()
+  // piping ring just inside the rim
+  ctx.beginPath(); ctx.ellipse(cx, cy, r * 0.82, r * 0.78, 0, 0, TAU)
+  ctx.lineWidth = 4; ctx.strokeStyle = VELVET_D; ctx.stroke()
+  // tufting: radial creases pulled toward a centre button
+  ctx.save(); ctx.beginPath(); ctx.ellipse(cx, cy, r * 0.96, r * 0.92, 0, 0, TAU); ctx.clip()
+  ctx.strokeStyle = 'rgba(60,10,20,0.32)'; ctx.lineWidth = 3
+  for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * r * 0.9, cy + Math.sin(a) * r * 0.86); ctx.stroke() }
+  ctx.restore()
+  ctx.beginPath(); ctx.ellipse(cx, cy, r * 0.14, r * 0.13, 0, 0, TAU)
+  ctx.fillStyle = VELVET_D; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(60,10,20,0.5)'; ctx.stroke()
+  // velvet sheen — a flat translucent glint (no gradient)
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'
+  ctx.beginPath(); ctx.ellipse(cx - r * 0.34, cy - r * 0.4, r * 0.34, r * 0.16, -0.5, 0, TAU); ctx.fill()
+}
 
-  // field + inset border stripe + a thin accent line
-  roundRect(ctx, x0, y0, r.w, r.h, 26); ctx.fillStyle = r.field; ctx.fill()
+/** A chunky raised wooden bench: ground shadow, a bottom-right side band for the
+ *  thickness, a plank-grained top, and a bold ink edge. Grain runs the long way. */
+function drawBench(ctx: Ctx, x0: number, y0: number, w: number, h: number): void {
+  const r = 16, DEPTH = 24
+  roundRect(ctx, x0 + 7, y0 + DEPTH + 9, w, h, r); ctx.fillStyle = 'rgba(32,26,23,0.20)'; ctx.fill()
+  roundRect(ctx, x0 + DEPTH * 0.4, y0 + DEPTH, w, h, r); ctx.fillStyle = WOOD_SIDE; ctx.fill()
+  roundRect(ctx, x0, y0, w, h, r); ctx.fillStyle = WOOD_TOP; ctx.fill()
+  ctx.save(); roundRect(ctx, x0, y0, w, h, r); ctx.clip()
+  ctx.strokeStyle = 'rgba(74,48,22,0.20)'; ctx.lineWidth = 3; ctx.lineCap = 'round'
+  if (w >= h) {
+    for (let i = 1; i <= 2; i++) { const gy = y0 + (h * i) / 3; ctx.beginPath(); ctx.moveTo(x0 + 16, gy); ctx.lineTo(x0 + w - 16, gy); ctx.stroke() }
+  } else {
+    for (let i = 1; i <= 2; i++) { const gx = x0 + (w * i) / 3; ctx.beginPath(); ctx.moveTo(gx, y0 + 16); ctx.lineTo(gx, y0 + h - 16); ctx.stroke() }
+  }
+  ctx.restore()
+  roundRect(ctx, x0, y0, w, h, r); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.lineJoin = 'round'; ctx.stroke()
+}
+
+/** A stubby wooden table leg descending from (lx, topY); the apron/top cover its
+ *  upper part, so only the bit below the apron peeks out at the table's foot. */
+function drawTableLeg(ctx: Ctx, lx: number, topY: number, legW: number, legLen: number): void {
+  roundRect(ctx, lx + 5, topY + 6, legW, legLen, 10); ctx.fillStyle = 'rgba(32,26,23,0.20)'; ctx.fill()
+  roundRect(ctx, lx, topY, legW, legLen, 10); ctx.fillStyle = WOOD_SIDE; ctx.fill()
+  ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.lineJoin = 'round'; ctx.stroke()
+  ctx.save(); roundRect(ctx, lx, topY, legW, legLen, 10); ctx.clip()
+  ctx.fillStyle = 'rgba(32,26,23,0.14)'; ctx.fillRect(lx + legW * 0.6, topY, legW * 0.4, legLen); ctx.restore()
+}
+
+/** The raised felt games table, its little legs, and the ring of barstools. */
+function drawGamesTable(ctx: Ctx): void {
+  const w = GT_W, h = GT_H
+  const x0 = GT_CX - w / 2, y0 = GT_CY - h / 2
+  ctx.save()
+  ctx.translate(GT_CX, GT_CY); ctx.rotate(GT_TILT); ctx.translate(-GT_CX, -GT_CY)
+
+  // --- seating first, so the table draws over the inner edges (tucked in). Long
+  //     sides get a wood bench; each short side gets two red-velvet barstools ---
+  const bDepth = 150, bGap = 40, bInX = 200
+  drawBench(ctx, x0 + bInX, y0 - bGap - bDepth, w - 2 * bInX, bDepth)   // top bench
+  drawBench(ctx, x0 + bInX, y0 + h + bGap, w - 2 * bInX, bDepth)        // bottom bench
+  const sr = 100, sg = sr + 14
+  drawBarstool(ctx, x0 - sg, y0 + h * 0.30, sr)       // left, upper
+  drawBarstool(ctx, x0 - sg, y0 + h * 0.70, sr)       // left, lower
+  drawBarstool(ctx, x0 + w + sg, y0 + h * 0.30, sr)   // right, upper
+  drawBarstool(ctx, x0 + w + sg, y0 + h * 0.70, sr)   // right, lower
+
+  // --- the raised felt table (taller apron = reads higher off the floor) ---
+  const DEPTH = 58, rr = 26
+  // ground shadow, thrown further out by the extra height
+  roundRect(ctx, x0 + 10, y0 + DEPTH + 16, w, h, rr); ctx.fillStyle = 'rgba(32,26,23,0.24)'; ctx.fill()
+  // little front legs — covered by the apron above, peeking out at the foot
+  const legW = 72, legLen = DEPTH + 46, legIn = 74
+  drawTableLeg(ctx, x0 + legIn, y0 + h - 10, legW, legLen)              // bottom-left
+  drawTableLeg(ctx, x0 + w - legIn - legW, y0 + h - 10, legW, legLen)   // bottom-right
+  // wooden apron — the table's edge thickness, projecting down-right
+  roundRect(ctx, x0 + DEPTH * 0.4, y0 + DEPTH, w, h, rr); ctx.fillStyle = WOOD_SIDE; ctx.fill()
+  // a darker shade band down the very bottom of the apron for a rounded edge
+  ctx.save(); roundRect(ctx, x0 + DEPTH * 0.4, y0 + DEPTH, w, h, rr); ctx.clip()
+  ctx.fillStyle = 'rgba(32,26,23,0.16)'; ctx.fillRect(x0, y0 + DEPTH + h - 22, w + DEPTH, 22); ctx.restore()
+  ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.lineJoin = 'round'
+  roundRect(ctx, x0 + DEPTH * 0.4, y0 + DEPTH, w, h, rr); ctx.stroke()
+  // felt top
+  roundRect(ctx, x0, y0, w, h, rr); ctx.fillStyle = FELT; ctx.fill()
+  // inset cream border + coral pinstripe (same as the old rug)
   const m = 46
   ctx.lineCap = 'butt'
-  ctx.strokeStyle = r.border; ctx.lineWidth = 30
-  roundRect(ctx, x0 + m, y0 + m, r.w - 2 * m, r.h - 2 * m, 18); ctx.stroke()
-  ctx.strokeStyle = r.stripe; ctx.lineWidth = 8
-  roundRect(ctx, x0 + m, y0 + m, r.w - 2 * m, r.h - 2 * m, 18); ctx.stroke()
-
-  // clean ink edge
-  ctx.lineWidth = 5; ctx.strokeStyle = INK
-  roundRect(ctx, x0, y0, r.w, r.h, 26); ctx.stroke()
+  ctx.strokeStyle = FELT_BORDER; ctx.lineWidth = 30
+  roundRect(ctx, x0 + m, y0 + m, w - 2 * m, h - 2 * m, 18); ctx.stroke()
+  ctx.strokeStyle = FELT_STRIPE; ctx.lineWidth = 8
+  roundRect(ctx, x0 + m, y0 + m, w - 2 * m, h - 2 * m, 18); ctx.stroke()
+  // clean ink edge around the top
+  ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.lineJoin = 'round'
+  roundRect(ctx, x0, y0, w, h, rr); ctx.stroke()
   ctx.restore()
 }
 
@@ -277,9 +359,10 @@ export function drawTable(ctx: Ctx, cam: CameraState, canvas: HTMLCanvasElement,
   drawPlanks(ctx, cam, canvas)
   ctx.restore()
 
-  // the oval rug under the title, then the zone rugs that group the toys
+  // the oval rug under the title, the raised games table (lower-left), then the
+  // custom arcade rug (upper-right)
   drawRug(ctx)
-  for (const r of zoneRugs) drawAreaRug(ctx, r)
+  drawGamesTable(ctx)
   drawArcadeRug(ctx)
 
   // the room reads calmer inside — a gentle ambient mute across the floor, then a

@@ -3,7 +3,7 @@ import { world } from '../config/world'
 import { theme } from '../config/theme'
 import { tuning } from '../config/tuning'
 
-export const MIN_ZOOM = 0.45
+export const MIN_ZOOM = 0.28   // zoom out far enough to take in most of the room
 export const MAX_ZOOM = 2.6
 
 export function createCamera(): CameraState {
