@@ -1,6 +1,7 @@
 import PartySocket from 'partysocket'
 import { equippedId } from './cursor'
 import type { Prop } from '../types'
+import type { RemoteGrabber } from './physics'
 
 // Phase-1 presence + prop-snapshot networking. Connects only when a room code
 // is in the URL; guests broadcast cursor (≤20Hz) and host broadcasts prop
@@ -43,6 +44,8 @@ let lastY = 0
 let lastSnap = 0
 let lastKey = 0
 const remoteMap = new Map<number, SnapTarget>()
+const remoteGrabMap = new Map<string, number>() // connId -> prop id it holds
+const releaseQueue: Array<{ pid: number; tap: boolean; vx: number; vy: number }> = []
 
 function upsertPeerCursor(id: string, x: number, y: number, cur?: string, name?: string): void {
   const existing = peerMap.get(id)
@@ -66,11 +69,31 @@ function connect(code: string): void {
   // party: 'table' = the kebab-cased Durable Object binding name ("Table")
   socket = new PartySocket({ host: HOST, room: code, party: 'table' })
   socket.addEventListener('message', (e: MessageEvent) => {
-    let m: { t?: string; id?: string; x?: number; y?: number; cur?: string; name?: string; isHost?: boolean; p?: number[][]; cx?: number; cy?: number }
+    let m: { t?: string; id?: string; x?: number; y?: number; cur?: string; name?: string; isHost?: boolean; p?: number[][]; cx?: number; cy?: number; pid?: number; vx?: number; vy?: number; tap?: number }
     try { m = JSON.parse(e.data as string) } catch { return }
     if (m.t === 'role') { host = !!m.isHost; return }
     if (!m.id) return
-    if (m.t === 'leave') { peerMap.delete(m.id); return }
+    if (m.t === 'grab' && typeof m.pid === 'number') {
+      // first-grab-wins: ignore if another connection already holds this prop
+      let taken = false
+      for (const held of remoteGrabMap.values()) if (held === m.pid) { taken = true; break }
+      if (!taken) remoteGrabMap.set(m.id, m.pid)
+      return
+    }
+    if (m.t === 'rel' && typeof m.pid === 'number') {
+      releaseQueue.push({ pid: m.pid, tap: m.tap === 1, vx: m.vx ?? 0, vy: m.vy ?? 0 })
+      remoteGrabMap.delete(m.id)
+      return
+    }
+    if (m.t === 'leave') {
+      const held = remoteGrabMap.get(m.id)
+      if (held !== undefined) {
+        releaseQueue.push({ pid: held, tap: false, vx: 0, vy: 0 })
+        remoteGrabMap.delete(m.id)
+      }
+      peerMap.delete(m.id)
+      return
+    }
     if (m.t === 'c' && typeof m.x === 'number' && typeof m.y === 'number') {
       upsertPeerCursor(m.id, m.x, m.y, m.cur, m.name)
       return
@@ -168,6 +191,33 @@ export function broadcastProps(props: Prop[], cx: number, cy: number): void {
     t: full ? 'key' : 'snap', p: rows,
     cx: Math.round(cx), cy: Math.round(cy), cur: equippedId(), name,
   }))
+}
+
+export function sendGrab(pid: number): void {
+  socket?.send(JSON.stringify({ t: 'grab', pid }))
+}
+
+export function sendRelease(pid: number, vx: number, vy: number, tap: boolean): void {
+  socket?.send(JSON.stringify({
+    t: 'rel', pid, vx: Math.round(vx), vy: Math.round(vy), tap: tap ? 1 : 0,
+  }))
+}
+
+/** Host side: current remote grabs joined with each grabber's latest cursor. */
+export function remoteGrabbers(propById: Map<number, Prop>): RemoteGrabber[] {
+  const out: RemoteGrabber[] = []
+  for (const [connId, pid] of remoteGrabMap) {
+    const prop = propById.get(pid)
+    const peer = peerMap.get(connId)
+    if (prop && peer) out.push({ prop, x: peer.tx, y: peer.ty })
+  }
+  return out
+}
+
+/** Host side: dequeue releases to apply this frame. */
+export function drainReleases(): Array<{ pid: number; tap: boolean; vx: number; vy: number }> {
+  const out = releaseQueue.splice(0, releaseQueue.length)
+  return out
 }
 
 /** Live peer map; prune anyone silent for 30s before returning. */

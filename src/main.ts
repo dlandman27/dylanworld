@@ -1,7 +1,7 @@
 import type { CameraState } from './types'
 import { createCamera, updateCameraPan, stepZoom } from './engine/world'
 import { createInput, updateInputWorld } from './engine/input'
-import { createProps, updatePhysics, drawProps, drawImpacts, interpolateRemoteProps } from './engine/physics'
+import { createProps, updatePhysics, drawProps, drawImpacts, interpolateRemoteProps, applyRelease } from './engine/physics'
 import { drawTable } from './engine/table'
 import { createGames } from './engine/games'
 import { bindLens } from './engine/games/magnifier'
@@ -12,7 +12,7 @@ import { initCursorShop } from './ui/cursorShop'
 import { initAudio } from './engine/audio'
 import { updateDayNight, drawNight } from './engine/daynight'
 import { setPointer } from './engine/pointer'
-import { initNet, sendCursor, netConnected, isHost, broadcastProps } from './engine/net'
+import { initNet, sendCursor, netConnected, isHost, broadcastProps, remoteGrabbers, drainReleases } from './engine/net'
 import { drawPeerCursors } from './ui/peerCursors'
 import { initTableHost } from './ui/tableHost'
 import { initRadialMenu } from './ui/radialMenu'
@@ -34,6 +34,7 @@ resize()
 
 const camera = createCamera()
 const props = createProps()
+const propById = new Map(props.map(p => [p.id, p]))
 const games = createGames(props)
 const input = createInput(canvas, camera, props, games)
 initCursors()      // custom hand-drawn cursor + trail/click fx
@@ -90,9 +91,15 @@ function frame(now: number): void {
   setPointer(input.world.x, input.world.y)    // publish cursor pos for ambient critters
   sendCursor(input.world.x, input.world.y)
   if (netConnected() && !isHost()) {
-    interpolateRemoteProps(props, dt, null)   // guest: watch the host's table
+    interpolateRemoteProps(props, dt, input.grabbed)   // guest: watch + predict our held prop
   } else {
-    updatePhysics(props, input, camera, dt)
+    if (netConnected()) {
+      for (const r of drainReleases()) {
+        const p = propById.get(r.pid)
+        if (p) applyRelease(props, p, r.tap, r.vx, r.vy)
+      }
+    }
+    updatePhysics(props, input, camera, dt, netConnected() ? remoteGrabbers(propById) : undefined)
     if (netConnected()) broadcastProps(props, input.world.x, input.world.y)
   }
   updateDayNight(dt)

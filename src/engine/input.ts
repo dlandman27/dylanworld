@@ -2,6 +2,7 @@ import type { CameraState, InputState, Prop, Vec2 } from '../types'
 import type { TableGame } from './games/shared'
 import { screenToWorld, zoomAt, requestZoom } from './world'
 import { applyRelease } from './physics'
+import { netConnected, isHost, sendGrab, sendRelease } from './net'
 
 /**
  * The cursor is the only agent in the world. At pointerdown we decide the
@@ -58,6 +59,7 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
       // bring to the top of the pile so a lifted piece draws above the rest
       const idx = props.indexOf(hit)
       if (idx !== -1) { props.splice(idx, 1); props.push(hit) }
+      if (netConnected() && !isHost()) sendGrab(hit.id)
       return true
     }
     return false
@@ -72,6 +74,13 @@ export function createInput(canvas: HTMLCanvasElement, cam: CameraState, props: 
       tap = moved < 8 && performance.now() - grabStart.t < 350
     }
     grabStart = null
+    if (netConnected() && !isHost()) {
+      // guest: the host owns the outcome — send the intent, stop predicting
+      sendRelease(g.id, g.vel.x, g.vel.y, tap)
+      g.grabbed = false
+      input.grabbed = null
+      return
+    }
     applyRelease(props, g, tap, g.vel.x, g.vel.y)
     input.grabbed = null
   }
