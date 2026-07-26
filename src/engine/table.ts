@@ -171,6 +171,7 @@ const GT_CX = 1280, GT_CY = 3120, GT_W = 2100, GT_H = 1560, GT_TILT = 0.03
 const FELT = '#6f9a55', FELT_BORDER = '#efe4c4', FELT_STRIPE = '#c9532f'
 const WOOD_TOP = '#d3a163', WOOD_SIDE = '#b5915a'
 const VELVET = '#a8283c', VELVET_D = '#7d1c2b'   // plush red barstool cushion
+const COIR = '#c99a5f', COIR_D = '#7a4f27'       // woven welcome-mat straw + frame
 const TAU = Math.PI * 2
 
 /** A plush red-velvet barstool seen from above: wooden legs poking out below a
@@ -327,6 +328,58 @@ function drawArcadeRug(ctx: Ctx): void {
   ctx.restore()
 }
 
+/** A coir welcome mat on the floor just inside the door (bottom wall, left of
+ *  centre). Flat top-down: woven straw field, dark frame, bristle fringe, and a
+ *  friendly greeting — the house style (bold ink outline + a hard offset shadow). */
+function drawDoorMat(ctx: Ctx): void {
+  const cx = 1616, cy = 4400, w = 700, h = 300, tilt = 0.02
+  const x0 = cx - w / 2, y0 = cy - h / 2
+  ctx.save()
+  ctx.translate(cx, cy); ctx.rotate(tilt); ctx.translate(-cx, -cy)
+
+  // hard offset shadow — the mat lies flat on the boards
+  roundRect(ctx, x0 + 8, y0 + 12, w, h, 18); ctx.fillStyle = 'rgba(32,26,23,0.20)'; ctx.fill()
+  // combed bristle fringe along the two long ends
+  ctx.strokeStyle = COIR_D; ctx.lineWidth = 5; ctx.lineCap = 'round'
+  const n = Math.round(w / 22)
+  for (let i = 0; i <= n; i++) {
+    const fx = x0 + (w * i) / n
+    ctx.beginPath(); ctx.moveTo(fx, y0); ctx.lineTo(fx, y0 - 16); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(fx, y0 + h); ctx.lineTo(fx, y0 + h + 16); ctx.stroke()
+  }
+  // straw field
+  roundRect(ctx, x0, y0, w, h, 18); ctx.fillStyle = COIR; ctx.fill()
+  // woven cross-hatch, clipped to the field
+  ctx.save(); roundRect(ctx, x0, y0, w, h, 18); ctx.clip()
+  ctx.strokeStyle = 'rgba(74,48,22,0.13)'; ctx.lineWidth = 3
+  for (let gx = x0 + 12; gx < x0 + w; gx += 24) { ctx.beginPath(); ctx.moveTo(gx, y0); ctx.lineTo(gx, y0 + h); ctx.stroke() }
+  for (let gy = y0 + 12; gy < y0 + h; gy += 24) { ctx.beginPath(); ctx.moveTo(x0, gy); ctx.lineTo(x0 + w, gy); ctx.stroke() }
+  ctx.restore()
+  // dark inset frame
+  const m = 34
+  ctx.strokeStyle = COIR_D; ctx.lineWidth = 14; ctx.lineJoin = 'round'
+  roundRect(ctx, x0 + m, y0 + m, w - 2 * m, h - 2 * m, 12); ctx.stroke()
+  // clean ink edge
+  ctx.lineWidth = 5; ctx.strokeStyle = INK
+  roundRect(ctx, x0, y0, w, h, 18); ctx.stroke()
+
+  // greeting, stamped into the coir
+  ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.font = `900 66px "Arial Black", ${theme.fonts.display}, Arial, sans-serif`
+  ctx.fillText('COME BACK', cx, cy - 38)
+  ctx.font = `900 52px "Arial Black", ${theme.fonts.display}, Arial, sans-serif`
+  ctx.fillText('ANYTIME', cx - 44, cy + 42)
+  // a little smiley after the word
+  const sxc = cx + 148, syc = cy + 42, sr = 28
+  ctx.lineWidth = 6; ctx.strokeStyle = INK; ctx.lineCap = 'round'
+  ctx.beginPath(); ctx.arc(sxc, syc, sr, 0, TAU); ctx.stroke()
+  ctx.fillStyle = INK
+  ctx.beginPath(); ctx.arc(sxc - 10, syc - 7, 4, 0, TAU); ctx.fill()
+  ctx.beginPath(); ctx.arc(sxc + 10, syc - 7, 4, 0, TAU); ctx.fill()
+  ctx.beginPath(); ctx.arc(sxc, syc + 1, 14, 0.18 * Math.PI, 0.82 * Math.PI); ctx.stroke()
+  ctx.restore()
+}
+
 /** Warm sunlight spilling from the top-wall window down onto the floor. */
 function drawSunbeam(ctx: Ctx): void {
   const cx = world.spawn.x  // the window is centred on the top wall (x = width/2)
@@ -364,6 +417,7 @@ export function drawTable(ctx: Ctx, cam: CameraState, canvas: HTMLCanvasElement,
   drawRug(ctx)
   drawGamesTable(ctx)
   drawArcadeRug(ctx)
+  drawDoorMat(ctx)
 
   // the room reads calmer inside — a gentle ambient mute across the floor, then a
   // warm sunbeam from the window as the bright spot (clipped to the floor)

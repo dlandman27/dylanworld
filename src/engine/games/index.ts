@@ -15,7 +15,7 @@ import { createRetroConsole } from './retroConsole'
 import { createBeanbag } from './beanbag'
 import { createWhiteboard } from './whiteboard'
 import { createLightSwitch } from './lightSwitch'
-import { createTent } from './tent'
+// import { createTent } from './tent' // removed — module kept
 import { initAboutCard } from '../../ui/aboutCard'
 import { createEasyButton } from './easybutton'
 import { createBackgammon } from './backgammon'
@@ -42,6 +42,9 @@ import { createGallery } from './gallery'
 import type { GalleryGame } from './gallery'
 import { initExperienceCard } from '../../ui/experienceCard'
 import { createDresser } from './dresser'
+import { createAquariumShelf } from './aquariumShelf'
+import { createCurioShelf } from './curioShelf'
+import { createCollectionsCrate } from './collectionsCrate'
 import { createToyChest } from './toychest'
 import { createPlant } from './plant'
 // Dominoes are parked for now — module kept, re-register to bring them back.
@@ -78,6 +81,9 @@ export function createGames(props: Prop[]): TableGame[] {
     tv,
     gallery,
     createDresser(250, 1500),
+    createAquariumShelf(360, 400),
+    createCurioShelf(830, 400),
+    createCollectionsCrate(1150, 1560),
     createToyChest(800, 4260),
     createPlant(6330, 320),
     // 🎮 the gaming lounge, on the rug under the CRT
@@ -86,7 +92,6 @@ export function createGames(props: Prop[]): TableGame[] {
     createRetroConsole(5620, 780),
     createWhiteboard(),   // dry-erase board on the east wall (a Chalkboard wink)
     createLightSwitch(),  // east wall by the bed — flips the room day↔night
-    createTent(2650, 1650),   // play teepee filling the upper-middle floor
     mail,
     // 🎲 board-game corner — clustered on the game rug (lower-left)
     createCoopChess(750, 2680),

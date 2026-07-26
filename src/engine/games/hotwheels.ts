@@ -45,7 +45,7 @@ type Pt = { x: number; y: number }
 // the raw layout below is shrunk by TRACK_SCALE and re-centred at (TRACK_CX,
 // TRACK_CY) — so the whole track resizes/moves from just these two knobs.
 const TRACK_SCALE = 0.66
-const TRACK_CX = 1750, TRACK_CY = 900
+const TRACK_CX = 2000, TRACK_CY = 900   // shifted right to clear the corner shelves
 const RAW_WAYPOINTS: Pt[] = [
   { x: 720, y: 1980 },   // 0 — start/finish, long bottom straight
   { x: 1500, y: 2030 },
@@ -106,6 +106,41 @@ const KEYMAP: Record<string, keyof typeof keys> = {
 let driveTargetPos: { x: number; y: number } | null = null
 export function driveTarget(): { x: number; y: number } | null {
   return driveTargetPos
+}
+
+// little pines, rocks, and grass tufts scattered on the grassy infield inside the
+// loop — hand-placed (relative to the track centre) so nothing lands on the road.
+const TAU = Math.PI * 2
+const INFIELD: { dx: number; dy: number; k: 'pine' | 'rock' | 'tuft'; s: number }[] = [
+  { dx: -190, dy: -34, k: 'pine', s: 1.0 }, { dx: -70, dy: -74, k: 'rock', s: 1.1 }, { dx: 44, dy: -58, k: 'pine', s: 0.8 },
+  { dx: 168, dy: -26, k: 'pine', s: 1.1 }, { dx: -206, dy: 58, k: 'rock', s: 0.8 }, { dx: -84, dy: 66, k: 'tuft', s: 1 },
+  { dx: 58, dy: 74, k: 'pine', s: 0.9 }, { dx: 176, dy: 52, k: 'rock', s: 1.0 }, { dx: -8, dy: 4, k: 'rock', s: 1.3 },
+  { dx: 116, dy: 6, k: 'tuft', s: 1 }, { dx: -140, dy: 14, k: 'pine', s: 1.0 }, { dx: 26, dy: -8, k: 'tuft', s: 1 },
+]
+
+function drawPine(g: Ctx, x: number, y: number, s: number): void {
+  g.fillStyle = 'rgba(32,26,23,0.18)'; g.beginPath(); g.ellipse(x + 4, y + 3, 15 * s, 5 * s, 0, 0, TAU); g.fill()
+  g.fillStyle = '#8a5a2b'; roundRect(g, x - 3 * s, y - 8 * s, 6 * s, 12 * s, 2); g.fill(); g.lineWidth = 2; g.strokeStyle = INK; g.stroke()
+  g.fillStyle = '#3f8f4f'; g.strokeStyle = INK; g.lineWidth = 2.2; g.lineJoin = 'round'
+  for (let k = 0; k < 3; k++) { const ty = y - 4 * s - k * 13 * s, w = (20 - k * 5) * s; g.beginPath(); g.moveTo(x, ty - 20 * s); g.lineTo(x + w, ty); g.lineTo(x - w, ty); g.closePath(); g.fill(); g.stroke() }
+}
+function drawRock(g: Ctx, x: number, y: number, s: number): void {
+  g.fillStyle = 'rgba(32,26,23,0.18)'; g.beginPath(); g.ellipse(x + 4, y + 3, 16 * s, 6 * s, 0, 0, TAU); g.fill()
+  g.fillStyle = '#9aa0a5'; g.strokeStyle = INK; g.lineWidth = 2.4; g.lineJoin = 'round'
+  g.beginPath(); g.moveTo(x - 15 * s, y + 4 * s); g.lineTo(x - 10 * s, y - 8 * s); g.lineTo(x + 2 * s, y - 11 * s); g.lineTo(x + 14 * s, y - 4 * s); g.lineTo(x + 12 * s, y + 6 * s); g.closePath(); g.fill(); g.stroke()
+  g.fillStyle = 'rgba(255,255,255,0.28)'; g.beginPath(); g.moveTo(x - 9 * s, y - 6 * s); g.lineTo(x - 1 * s, y - 8 * s); g.lineTo(x - 4 * s, y - 1 * s); g.closePath(); g.fill()
+}
+function drawTuft(g: Ctx, x: number, y: number, s: number): void {
+  g.strokeStyle = '#5cae61'; g.lineWidth = 3 * s; g.lineCap = 'round'
+  for (const dx of [-8, -3, 2, 7]) { g.beginPath(); g.moveTo(x + dx * s, y + 4 * s); g.quadraticCurveTo(x + dx * s * 1.4, y - 8 * s, x + dx * s * 2 + 2, y - 14 * s); g.stroke() }
+}
+function drawInfield(g: Ctx): void {
+  for (const it of INFIELD) {
+    const x = TRACK_CX + it.dx, y = TRACK_CY + it.dy
+    if (it.k === 'pine') drawPine(g, x, y, it.s)
+    else if (it.k === 'rock') drawRock(g, x, y, it.s)
+    else drawTuft(g, x, y, it.s)
+  }
 }
 
 export function createHotwheels(): TableGame {
@@ -252,6 +287,7 @@ export function createHotwheels(): TableGame {
     },
     draw(g: Ctx, t) {
       drawTrack(g)
+      drawInfield(g)
       // skid marks under the cars
       for (const s of skids) {
         g.save()
