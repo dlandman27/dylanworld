@@ -2,9 +2,10 @@ import PartySocket from 'partysocket'
 import { equippedId } from './cursor'
 import type { Prop } from '../types'
 
-// Phase-1 presence networking. Connects only when a room code is in the URL,
-// broadcasts this cursor at <=20Hz, and keeps an interpolation-ready peer map.
-// Peers are ghosts: nothing here touches physics or games.
+// Phase-1 presence + prop-snapshot networking. Connects only when a room code
+// is in the URL; guests broadcast cursor (≤20Hz) and host broadcasts prop
+// snapshots (≤20Hz, keyframe every 1.5s). Keeps interpolation-ready peer map
+// and per-prop snapshot targets.
 
 export interface Peer {
   id: string
@@ -162,6 +163,7 @@ export function broadcastProps(props: Prop[], cx: number, cy: number): void {
       p.grabbed ? 1 : 0,
     ])
   }
+  if (!full && rows.length === 0) return
   socket.send(JSON.stringify({
     t: full ? 'key' : 'snap', p: rows,
     cx: Math.round(cx), cy: Math.round(cy), cur: equippedId(), name,
