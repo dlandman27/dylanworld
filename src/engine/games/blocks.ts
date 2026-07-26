@@ -103,6 +103,15 @@ export function createBlocks(): TableGame {
     return top
   }
 
+  // A block "parked" at its home is settled title furniture. Two parked blocks
+  // must NOT shove each other: adjacent letter homes can sit closer (min ~108px)
+  // than the collide distance (R*1.7 ≈ 112px), so the collision push and the
+  // home-snap fight every frame and the pair rumbles forever. A grabbed / flung /
+  // knocked block isn't parked, so real collisions are unaffected.
+  const parked = (b: Block): boolean =>
+    !b.grabbed && b.z === 0 && b.rest > RETURN_DELAY &&
+    Math.abs(b.x - b.home.x) < 6 && Math.abs(b.y - b.home.y) < 6
+
   /** A falling block clipping another block's EDGE skids off it sideways. */
   const glanceOff = (b: Block, dt: number): void => {
     for (const o of blocks) {
@@ -194,7 +203,9 @@ export function createBlocks(): TableGame {
           const hx = b.home.x - b.x, hy = b.home.y - b.y
           const hd = Math.hypot(hx, hy)
           if (hd < 6 && speed < 60) {
-            if (b.x !== b.home.x || b.y !== b.home.y) spark(b.home.x, b.home.y, 0.12)
+            // spark only on a MEANINGFUL slide home, not a sub-2px collision
+            // twitch — otherwise a block nudged each frame clunks every frame
+            if (hd > 2) spark(b.home.x, b.home.y, 0.12)
             b.x = b.home.x; b.y = b.home.y
             b.vx = 0; b.vy = 0; b.rot = b.tilt
           } else if (hd >= 6) {
@@ -210,6 +221,7 @@ export function createBlocks(): TableGame {
       for (let i = 0; i < blocks.length; i++) for (let j = i + 1; j < blocks.length; j++) {
         const a = blocks[i], b = blocks[j]
         if (a.grabbed || b.grabbed) continue
+        if (parked(a) && parked(b)) continue   // settled title blocks don't shove
         if (Math.abs(a.z - b.z) >= H * 0.8) continue
         const dx = b.x - a.x, dy = b.y - a.y
         const d = Math.hypot(dx, dy)
