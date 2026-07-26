@@ -25,6 +25,17 @@ export interface SnapTarget {
   grabbed: boolean
 }
 
+export interface GameMsg {
+  t: string
+  id: string
+  g?: string
+  from?: number
+  to?: number
+  board?: string
+  turn?: 'w' | 'b'
+  seats?: { w: string | null; b: string | null }
+}
+
 const HOST =
   location.hostname === 'localhost' || location.hostname === '127.0.0.1'
     ? 'localhost:1999'
@@ -47,6 +58,7 @@ let lastKey = 0
 const remoteMap = new Map<number, SnapTarget>()
 const remoteGrabMap = new Map<string, number>() // connId -> prop id it holds
 const releaseQueue: Array<{ pid: number; tap: boolean; vx: number; vy: number }> = []
+const gameMsgQueue: GameMsg[] = []
 
 function upsertPeerCursor(id: string, x: number, y: number, cur?: string, name?: string): void {
   const existing = peerMap.get(id)
@@ -71,10 +83,11 @@ function connect(code: string): void {
   remoteMap.clear()
   remoteGrabMap.clear()
   releaseQueue.length = 0
+  gameMsgQueue.length = 0
   // party: 'table' = the kebab-cased Durable Object binding name ("Table")
   socket = new PartySocket({ host: HOST, room: code, party: 'table' })
   socket.addEventListener('message', (e: MessageEvent) => {
-    let m: { t?: string; id?: string; x?: number; y?: number; cur?: string; name?: string; isHost?: boolean; p?: number[][]; cx?: number; cy?: number; pid?: number; vx?: number; vy?: number; tap?: number }
+    let m: { t?: string; id?: string; x?: number; y?: number; cur?: string; name?: string; isHost?: boolean; p?: number[][]; cx?: number; cy?: number; pid?: number; vx?: number; vy?: number; tap?: number; g?: string; from?: number; to?: number; board?: string; turn?: 'w' | 'b'; seats?: { w: string | null; b: string | null } }
     try { m = JSON.parse(e.data as string) } catch { return }
     if (m.t === 'role') { host = !!m.isHost; if (typeof m.id === 'string') selfId = m.id; return }
     if (!m.id) return
@@ -96,6 +109,7 @@ function connect(code: string): void {
         releaseQueue.push({ pid: held, tap: false, vx: 0, vy: 0 })
         remoteGrabMap.delete(m.id)
       }
+      gameMsgQueue.push({ t: 'gleave', id: m.id })   // free any seat this peer held
       peerMap.delete(m.id)
       return
     }
@@ -114,6 +128,10 @@ function connect(code: string): void {
       if (typeof m.cx === 'number' && typeof m.cy === 'number') {
         upsertPeerCursor(m.id, m.cx, m.cy, m.cur, m.name)
       }
+      return
+    }
+    if (m.t === 'gclaim' || m.t === 'gleave' || m.t === 'gmove' || m.t === 'greset' || m.t === 'gstate') {
+      gameMsgQueue.push(m as GameMsg)
       return
     }
   })
@@ -227,6 +245,27 @@ export function remoteGrabbers(propById: Map<number, Prop>): RemoteGrabber[] {
 export function drainReleases(): Array<{ pid: number; tap: boolean; vx: number; vy: number }> {
   const out = releaseQueue.splice(0, releaseQueue.length)
   return out
+}
+
+/** Received game messages (host: intents; guest: gstate; plus peer-leave seat frees). */
+export function drainGameMessages(): GameMsg[] {
+  return gameMsgQueue.splice(0, gameMsgQueue.length)
+}
+
+export function sendGameClaim(g: string): void {
+  socket?.send(JSON.stringify({ t: 'gclaim', g }))
+}
+export function sendGameLeave(g: string): void {
+  socket?.send(JSON.stringify({ t: 'gleave', g }))
+}
+export function sendGameMove(g: string, from: number, to: number): void {
+  socket?.send(JSON.stringify({ t: 'gmove', g, from, to }))
+}
+export function sendGameReset(g: string): void {
+  socket?.send(JSON.stringify({ t: 'greset', g }))
+}
+export function broadcastGameState(g: string, board: string, turn: 'w' | 'b', seats: { w: string | null; b: string | null }): void {
+  socket?.send(JSON.stringify({ t: 'gstate', g, board, turn, seats }))
 }
 
 /** Live peer map; prune anyone silent for 30s before returning. */
