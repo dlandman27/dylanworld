@@ -38,6 +38,7 @@ const peerMap = new Map<string, Peer>()
 let socket: PartySocket | null = null
 let room: string | null = null
 let host = false
+let selfId = ''
 let lastSend = 0
 let lastX = 0
 let lastY = 0
@@ -66,6 +67,7 @@ function upsertPeerCursor(id: string, x: number, y: number, cur?: string, name?:
 function connect(code: string): void {
   room = code
   host = false
+  selfId = ''
   remoteMap.clear()
   remoteGrabMap.clear()
   releaseQueue.length = 0
@@ -74,7 +76,7 @@ function connect(code: string): void {
   socket.addEventListener('message', (e: MessageEvent) => {
     let m: { t?: string; id?: string; x?: number; y?: number; cur?: string; name?: string; isHost?: boolean; p?: number[][]; cx?: number; cy?: number; pid?: number; vx?: number; vy?: number; tap?: number }
     try { m = JSON.parse(e.data as string) } catch { return }
-    if (m.t === 'role') { host = !!m.isHost; return }
+    if (m.t === 'role') { host = !!m.isHost; if (typeof m.id === 'string') selfId = m.id; return }
     if (!m.id) return
     if (m.t === 'grab' && typeof m.pid === 'number') {
       // first-grab-wins: ignore if another connection already holds this prop
@@ -131,6 +133,10 @@ export function netConnected(): boolean {
 
 export function isHost(): boolean {
   return host
+}
+
+export function myId(): string {
+  return selfId
 }
 
 export function roomCode(): string | null {

@@ -24,9 +24,9 @@ export class Table extends Server<Env> {
   private buckets = new Map<string, Bucket>()
   private hostId: string | null = null
 
-  // tell one connection whether it is the authoritative physics host
+  // tell one connection whether it is the authoritative physics host, and its own id
   private sendRole(conn: Connection): void {
-    conn.send(JSON.stringify({ t: 'role', isHost: conn.id === this.hostId }))
+    conn.send(JSON.stringify({ t: 'role', isHost: conn.id === this.hostId, id: conn.id }))
   }
 
   // the oldest still-open connection, used to promote a new host
