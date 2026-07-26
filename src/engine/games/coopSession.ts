@@ -38,6 +38,7 @@ function broadcastState(): void {
   broadcastGameState(GAME_ID, s.board, s.turn, seats)
 }
 function assignSeat(id: string): void {
+  if (!id) return
   if (seats.w === id || seats.b === id) return
   if (!seats.w) seats.w = id
   else if (!seats.b) seats.b = id
@@ -106,7 +107,7 @@ const adapter: ChessCoop = {
     return false                                    // let chess handle the piece drag
   },
   sendMove(from, to) {
-    if (isHost()) broadcastState()                  // host already applied in onUp
+    if (isHost()) broadcastState()                  // host's own move: already applied in chess.onUp; guest moves go through handleMsg
     else sendGameMove(GAME_ID, from, to)            // guest: optimistic apply done, host reconciles
   },
   drawOverlay(g, gcx, gcy, half) {
