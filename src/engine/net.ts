@@ -28,17 +28,20 @@ const name = `${ADJ[(Math.random() * ADJ.length) | 0]} ${NOUN[(Math.random() * N
 const peerMap = new Map<string, Peer>()
 let socket: PartySocket | null = null
 let room: string | null = null
+let host = false
 let lastSend = 0
 let lastX = 0
 let lastY = 0
 
 function connect(code: string): void {
   room = code
+  host = false
   // party: 'table' = the kebab-cased Durable Object binding name ("Table")
   socket = new PartySocket({ host: HOST, room: code, party: 'table' })
   socket.addEventListener('message', (e: MessageEvent) => {
-    let m: { t?: string; id?: string; x?: number; y?: number; cur?: string; name?: string }
+    let m: { t?: string; id?: string; x?: number; y?: number; cur?: string; name?: string; isHost?: boolean }
     try { m = JSON.parse(e.data as string) } catch { return }
+    if (m.t === 'role') { host = !!m.isHost; return }
     if (!m.id) return
     if (m.t === 'leave') { peerMap.delete(m.id); return }
     if (m.t === 'c' && typeof m.x === 'number' && typeof m.y === 'number') {
@@ -69,6 +72,10 @@ export function initNet(): void {
 
 export function netConnected(): boolean {
   return socket !== null
+}
+
+export function isHost(): boolean {
+  return host
 }
 
 export function roomCode(): string | null {
