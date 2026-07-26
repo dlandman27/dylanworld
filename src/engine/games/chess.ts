@@ -35,7 +35,80 @@ export interface ChessGame extends TableGame {
   turn(): ChessColor
 }
 
-const GLYPH: Record<PieceType, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' }
+const TAU = Math.PI * 2
+
+// hand-drawn top-down piece marks, centred at (0,0), sized to ±k, painted in
+// `mark` (with `body` used to knock out slits/eyes). Bold + chunky, house style.
+function drawPieceIcon(g: Ctx, t: PieceType, k: number, body: string, mark: string): void {
+  g.fillStyle = mark
+  g.strokeStyle = mark
+  g.lineJoin = 'round'
+  g.lineCap = 'round'
+  if (t === 'P') {
+    // round head on a flared skirt
+    g.beginPath()
+    g.moveTo(-0.5 * k, 0.62 * k); g.lineTo(0.5 * k, 0.62 * k)
+    g.lineTo(0.28 * k, 0.04 * k); g.lineTo(-0.28 * k, 0.04 * k); g.closePath(); g.fill()
+    g.beginPath(); g.arc(0, -0.3 * k, 0.42 * k, 0, TAU); g.fill()
+  } else if (t === 'R') {
+    // castle: flared base, body, three crenellations
+    g.beginPath()
+    g.moveTo(-0.6 * k, 0.62 * k); g.lineTo(0.6 * k, 0.62 * k)
+    g.lineTo(0.44 * k, 0.24 * k); g.lineTo(-0.44 * k, 0.24 * k); g.closePath(); g.fill()
+    g.fillRect(-0.46 * k, -0.18 * k, 0.92 * k, 0.46 * k)
+    g.fillRect(-0.46 * k, -0.55 * k, 0.24 * k, 0.42 * k)
+    g.fillRect(-0.12 * k, -0.55 * k, 0.24 * k, 0.42 * k)
+    g.fillRect(0.22 * k, -0.55 * k, 0.24 * k, 0.42 * k)
+  } else if (t === 'B') {
+    // mitre with a diagonal slit + top ball
+    g.beginPath()
+    g.moveTo(0, -0.72 * k)
+    g.quadraticCurveTo(0.48 * k, -0.18 * k, 0.3 * k, 0.44 * k)
+    g.quadraticCurveTo(0, 0.62 * k, -0.3 * k, 0.44 * k)
+    g.quadraticCurveTo(-0.48 * k, -0.18 * k, 0, -0.72 * k)
+    g.closePath(); g.fill()
+    g.strokeStyle = body; g.lineWidth = Math.max(2, 0.14 * k)
+    g.beginPath(); g.moveTo(-0.12 * k, -0.32 * k); g.lineTo(0.15 * k, 0.0 * k); g.stroke()
+    g.fillStyle = mark; g.beginPath(); g.arc(0, -0.72 * k, 0.12 * k, 0, TAU); g.fill()
+  } else if (t === 'N') {
+    // horse head facing left
+    g.beginPath()
+    g.moveTo(-0.48 * k, 0.64 * k)
+    g.lineTo(0.42 * k, 0.64 * k)
+    g.lineTo(0.34 * k, -0.06 * k)
+    g.lineTo(0.16 * k, -0.44 * k)
+    g.lineTo(-0.04 * k, -0.68 * k)
+    g.lineTo(-0.16 * k, -0.4 * k)
+    g.lineTo(-0.48 * k, -0.14 * k)
+    g.lineTo(-0.6 * k, 0.12 * k)
+    g.lineTo(-0.36 * k, 0.18 * k)
+    g.lineTo(-0.26 * k, 0.42 * k)
+    g.closePath(); g.fill()
+    g.fillStyle = body; g.beginPath(); g.arc(-0.14 * k, -0.1 * k, 0.08 * k, 0, TAU); g.fill()
+  } else {
+    // K and Q share a three-spike crown
+    g.beginPath()
+    g.moveTo(-0.6 * k, 0.5 * k)
+    g.lineTo(-0.6 * k, 0.02 * k)
+    g.lineTo(-0.36 * k, -0.5 * k)
+    g.lineTo(-0.16 * k, -0.02 * k)
+    g.lineTo(0, -0.6 * k)
+    g.lineTo(0.16 * k, -0.02 * k)
+    g.lineTo(0.36 * k, -0.5 * k)
+    g.lineTo(0.6 * k, 0.02 * k)
+    g.lineTo(0.6 * k, 0.5 * k)
+    g.closePath(); g.fill()
+    if (t === 'Q') {
+      g.beginPath(); g.arc(-0.36 * k, -0.58 * k, 0.1 * k, 0, TAU); g.fill()
+      g.beginPath(); g.arc(0, -0.68 * k, 0.1 * k, 0, TAU); g.fill()
+      g.beginPath(); g.arc(0.36 * k, -0.58 * k, 0.1 * k, 0, TAU); g.fill()
+    } else {
+      // king: a cross above the centre spike
+      g.fillRect(-0.07 * k, -0.98 * k, 0.14 * k, 0.44 * k)
+      g.fillRect(-0.2 * k, -0.84 * k, 0.4 * k, 0.14 * k)
+    }
+  }
+}
 const SQ = 60
 const N8 = 8
 const HALF = (N8 * SQ) / 2
@@ -128,24 +201,36 @@ export function createChess(cx: number, cy: number, coop?: ChessCoop): ChessGame
     return out
   }
 
-  function drawPiece(g: Ctx, p: Piece, x: number, y: number, size: number): void {
-    g.font = `${size}px serif`
-    g.textAlign = 'center'
-    g.textBaseline = 'middle'
-    g.lineJoin = 'round'
-    if (p.w) {
-      g.fillStyle = '#fbfaf4'
-      g.strokeStyle = INK
-      g.lineWidth = 2.5
-      g.strokeText(GLYPH[p.t], x, y)
-      g.fillText(GLYPH[p.t], x, y)
-    } else {
-      g.fillStyle = INK
-      g.strokeStyle = '#fbfaf4'
-      g.lineWidth = 1.4
-      g.fillText(GLYPH[p.t], x, y)
-      g.strokeText(GLYPH[p.t], x, y)
-    }
+  // a flat top-down token — cream disc for white, dark disc for black — with an
+  // ink outline, hard offset shadow, inner ring, and the piece mark. `lift`
+  // (0..1) grows the shadow + scale so a dragged piece reads as picked up.
+  function drawPiece(g: Ctx, p: Piece, x: number, y: number, size: number, lift = 0): void {
+    const r = size * 0.46
+    const body = p.w ? '#fbfaf4' : '#3f3b46'
+    const mark = p.w ? INK : '#fbfaf4'
+    // hard offset shadow (never blur), thrown further as the piece lifts
+    g.fillStyle = 'rgba(32,26,23,0.22)'
+    g.beginPath()
+    g.ellipse(x + r * (0.14 + lift * 0.5), y + r * (0.22 + lift * 0.8), r, r * 0.9, 0, 0, TAU)
+    g.fill()
+    g.save()
+    g.translate(x, y)
+    g.scale(1 + lift * 0.14, 1 + lift * 0.14)
+    // disc body + bold ink outline
+    g.fillStyle = body
+    g.strokeStyle = INK
+    g.lineWidth = 2.6
+    g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill(); g.stroke()
+    // inner ring, like the coins/chips
+    g.strokeStyle = p.w ? 'rgba(32,26,23,0.15)' : 'rgba(255,255,255,0.16)'
+    g.lineWidth = 1.6
+    g.beginPath(); g.arc(0, 0, r * 0.8, 0, TAU); g.stroke()
+    // flat sheen glint, top-left (under the mark so the mark stays crisp)
+    g.fillStyle = 'rgba(255,255,255,0.4)'
+    g.beginPath(); g.ellipse(-r * 0.36, -r * 0.42, r * 0.22, r * 0.12, -0.6, 0, TAU); g.fill()
+    // the piece mark
+    drawPieceIcon(g, p.t, r * 0.62, body, mark)
+    g.restore()
   }
 
   // place a piece on `to` (auto-queening a promoting pawn) and flip the turn
@@ -247,7 +332,7 @@ export function createChess(cx: number, cy: number, coop?: ChessCoop): ChessGame
       const mp: Piece = { t: 'P', w: turn === 'w' }
       drawPiece(g, mp, cx + HALF + 40, cy + (turn === 'w' ? HALF - 20 : -HALF + 20), 40)
       // dragged piece rides the cursor
-      if (drag) drawPiece(g, drag.piece, drag.x, drag.y - 10, SQ * 0.9)
+      if (drag) drawPiece(g, drag.piece, drag.x, drag.y - 10, SQ * 0.9, 1)
       coop?.drawOverlay(g, cx, cy, HALF)
     },
   }
