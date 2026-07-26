@@ -9,6 +9,32 @@ import { INK, roundRect } from './shared'
 type PieceType = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P'
 interface Piece { t: PieceType; w: boolean }
 
+export type ChessColor = 'w' | 'b'
+export interface ChessState { board: string; turn: ChessColor }
+
+export interface ChessCoop {
+  /** co-op is active (connected & in a room) */
+  enabled(): boolean
+  /** this client holds a seat */
+  seated(): boolean
+  /** this client holds the seat whose colour is to move */
+  controls(t: ChessColor): boolean
+  /** claim/spectate-focus/leave consumed this press — chess should not drag */
+  onBoardDown(x: number, y: number): boolean
+  /** this client just applied a legal move locally */
+  sendMove(from: number, to: number): void
+  /** draw the seat/turn/leave UI over the board (world coords) */
+  drawOverlay(g: Ctx, cx: number, cy: number, half: number): void
+}
+
+export interface ChessGame extends TableGame {
+  state(): ChessState
+  setState(s: ChessState): void
+  applyMove(from: number, to: number): void
+  isLegalMove(from: number, to: number, color: ChessColor): boolean
+  turn(): ChessColor
+}
+
 const GLYPH: Record<PieceType, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' }
 const SQ = 60
 const N8 = 8
@@ -28,9 +54,27 @@ function startBoard(): (Piece | null)[] {
   return b
 }
 
-export function createChess(cx: number, cy: number): TableGame {
+const PIECE_LETTERS: PieceType[] = ['K', 'Q', 'R', 'B', 'N', 'P']
+
+function serializeBoard(board: (Piece | null)[]): string {
+  return board.map(p => (p ? (p.w ? p.t : p.t.toLowerCase()) : '.')).join('')
+}
+
+function parseBoard(s: string): (Piece | null)[] {
+  return Array.from(s, ch => {
+    if (ch === '.') return null
+    const up = ch.toUpperCase() as PieceType
+    return PIECE_LETTERS.includes(up) ? { t: up, w: ch === ch.toUpperCase() } : null
+  })
+}
+
+export function chessStartState(): ChessState {
+  return { board: serializeBoard(startBoard()), turn: 'w' }
+}
+
+export function createChess(cx: number, cy: number, coop?: ChessCoop): ChessGame {
   let board = startBoard()
-  let turn: 'w' | 'b' = 'w'
+  let turn: ChessColor = 'w'
   let drag: { from: number; piece: Piece; x: number; y: number; legal: Set<number> } | null = null
 
   const cellAt = (x: number, y: number): number | null => {
@@ -104,13 +148,27 @@ export function createChess(cx: number, cy: number): TableGame {
     }
   }
 
+  // place a piece on `to` (auto-queening a promoting pawn) and flip the turn
+  function settle(piece: Piece, to: number): void {
+    const r = Math.floor(to / 8)
+    board[to] = piece.t === 'P' && (r === 0 || r === 7) ? { t: 'Q', w: piece.w } : piece
+    turn = turn === 'w' ? 'b' : 'w'
+  }
+
   return {
     id: 'chess',
     onDown(x, y) {
+      if (coop?.enabled()) {
+        if (coop.onBoardDown(x, y)) return true          // claim / spectate-focus / leave consumed it
+        if (coop.seated() && !coop.controls(turn)) {
+          return cellAt(x, y) !== null                    // not your turn: swallow board taps, allow off-board pan
+        }
+        if (!coop.seated()) return false                  // unseated + off-board: let the table pan
+      }
       const i = cellAt(x, y)
       if (i === null) return false
       const p = board[i]
-      if (!p || p.w !== (turn === 'w')) return true // on the board: capture the tap, no pan
+      if (!p || p.w !== (turn === 'w')) return true        // on the board: capture the tap, no pan
       drag = { from: i, piece: p, x, y, legal: legalMoves(i) }
       board[i] = null
       return true
@@ -121,15 +179,37 @@ export function createChess(cx: number, cy: number): TableGame {
     onUp(x, y) {
       if (!drag) return
       const to = cellAt(x, y)
+      const from = drag.from
       if (to !== null && drag.legal.has(to)) {
-        const r = Math.floor(to / 8)
-        const promoted = drag.piece.t === 'P' && (r === 0 || r === 7)
-        board[to] = promoted ? { t: 'Q', w: drag.piece.w } : drag.piece
-        turn = turn === 'w' ? 'b' : 'w'
+        settle(drag.piece, to)                             // board[from] already null from onDown
+        drag = null
+        if (coop?.enabled()) coop.sendMove(from, to)       // optimistic: state already applied locally
       } else {
-        board[drag.from] = drag.piece // illegal → snap home
+        board[drag.from] = drag.piece                      // illegal → snap home
+        drag = null
       }
+    },
+    state() {
+      return { board: serializeBoard(board), turn }
+    },
+    setState(s) {
+      board = parseBoard(s.board)
+      turn = s.turn
       drag = null
+    },
+    applyMove(from, to) {
+      const p = board[from]
+      if (!p) return
+      board[from] = null
+      settle(p, to)
+    },
+    isLegalMove(from, to, color) {
+      const p = board[from]
+      if (!p || p.w !== (color === 'w') || turn !== color) return false
+      return legalMoves(from).has(to)
+    },
+    turn() {
+      return turn
     },
     update() { /* chess doesn't tick */ },
     draw(g) {
@@ -168,6 +248,7 @@ export function createChess(cx: number, cy: number): TableGame {
       drawPiece(g, mp, cx + HALF + 40, cy + (turn === 'w' ? HALF - 20 : -HALF + 20), 40)
       // dragged piece rides the cursor
       if (drag) drawPiece(g, drag.piece, drag.x, drag.y - 10, SQ * 0.9)
+      coop?.drawOverlay(g, cx, cy, HALF)
     },
   }
 }
