@@ -10,8 +10,11 @@ Host a table, friends join via room link (`?room=XXXX`), play together.
       cursors with equipped skins + name tags, live headcount
 - [ ] Phase 2 — board games as synced events (chess moves, scrabble placements,
       card flips)
-- [ ] Phase 3 — shared physics: host-authoritative simulation, guests send
-      inputs, host broadcasts snapshots (~20/s), guests interpolate
+- [x] Phase 3 — shared physics SHIPPED: host-authoritative simulation, guests
+      send inputs, host broadcasts snapshots (~20/s), guests interpolate +
+      predict their held prop (marbles/coins/chips/ball synced)
+- [ ] Phase 3 follow-up — per-game/toy sync (chess, dice, plinko, drone,
+      letter blocks) is the next pass
 
 ## Easy button
 - [ ] Replace the speech-bubble "That was easy." with the real voice clip —

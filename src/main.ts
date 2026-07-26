@@ -1,7 +1,7 @@
 import type { CameraState } from './types'
 import { createCamera, updateCameraPan, stepZoom } from './engine/world'
 import { createInput, updateInputWorld } from './engine/input'
-import { createProps, updatePhysics, drawProps, drawImpacts, interpolateRemoteProps, applyRelease } from './engine/physics'
+import { createProps, updatePhysics, drawProps, drawImpacts, interpolateRemoteProps, applyRelease, predictHeld } from './engine/physics'
 import { drawTable } from './engine/table'
 import { createGames } from './engine/games'
 import { bindLens } from './engine/games/magnifier'
@@ -91,7 +91,8 @@ function frame(now: number): void {
   setPointer(input.world.x, input.world.y)    // publish cursor pos for ambient critters
   sendCursor(input.world.x, input.world.y)
   if (netConnected() && !isHost()) {
-    interpolateRemoteProps(props, dt, input.grabbed)   // guest: watch + predict our held prop
+    interpolateRemoteProps(props, dt, input.grabbed)   // watch the host's table
+    if (input.grabbed) predictHeld(input.grabbed, input, dt)  // predict our held prop
   } else {
     if (netConnected()) {
       for (const r of drainReleases()) {

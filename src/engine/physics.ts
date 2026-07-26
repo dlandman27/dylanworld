@@ -403,6 +403,19 @@ export function updatePhysics(props: Prop[], input: InputState, cam: CameraState
   }
 }
 
+/** Guest side: locally simulate the one prop this client is holding so it feels
+ *  instant. Uses the shared grab force, then integrates non-disc motion so the
+ *  resulting g.vel is the fling velocity sent to the host on release. */
+export function predictHeld(g: Prop, input: InputState, dt: number): void {
+  applyGrabForce(g, input.world.x, input.world.y)
+  if (!isDisc(g.kind)) {
+    g.pos.x += g.vel.x * dt
+    g.pos.y += g.vel.y * dt
+  }
+  g.grabbed = true
+  g.restTime = 0
+}
+
 /** Guest side: ease shared props toward the host's latest snapshot targets.
  *  `skip` is the one prop this client is predicting locally (its held prop) and
  *  is left alone. Disc lift is derived from the grabbed flag. */
