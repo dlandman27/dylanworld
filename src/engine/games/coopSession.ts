@@ -1,5 +1,6 @@
 import type { Ctx } from './shared'
 import { INK } from './shared'
+import { theme } from '../../config/theme'
 import { createChess, chessStartState } from './chess'
 import type { ChessGame, ChessCoop, ChessColor } from './chess'
 import {
@@ -142,25 +143,47 @@ function handleMsg(m: GameMsg): void {
   }
 }
 
-// ---- seat/turn overlay (minimal here; refined in Task 5) ----
+// ---- seat/turn overlay ----
 function seatName(id: string | null): string {
   if (!id) return 'open'
   if (id === myId()) return 'you'
   return peers().get(id)?.name ?? 'player'
 }
+function chip(g: Ctx, r: { x: number; y: number; w: number; h: number }, label: string): void {
+  g.fillStyle = INK
+  g.fillRect(r.x + 3, r.y + 3, r.w, r.h)                 // hard offset shadow
+  g.fillStyle = theme.colors.card
+  g.strokeStyle = INK
+  g.lineWidth = 2.5
+  g.fillRect(r.x, r.y, r.w, r.h)
+  g.strokeRect(r.x, r.y, r.w, r.h)
+  g.fillStyle = INK
+  g.font = "800 13px ui-monospace, monospace"
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.fillText(label, r.x + r.w / 2, r.y + r.h / 2 + 1)
+}
 function drawSeatUI(g: Ctx, gcx: number, gcy: number, half: number): void {
   const turn = game!.state().turn
+  const mine = mySeat()
+  // seat labels above the board, with the side-to-move highlighted
   g.font = "700 15px ui-monospace, monospace"
   g.textAlign = 'left'
   g.textBaseline = 'middle'
-  g.fillStyle = INK
-  g.fillText(`white: ${seatName(seats.w)}`, gcx - half, gcy - half - 22)
-  g.fillText(`black: ${seatName(seats.b)}`, gcx - half, gcy - half - 4)
-  // turn dot
+  g.fillStyle = turn === 'w' ? theme.colors.coral : INK
+  g.fillText(`white: ${seatName(seats.w)}${mine === 'w' ? '  ◀ you' : ''}`, gcx - half, gcy - half - 24)
+  g.fillStyle = turn === 'b' ? theme.colors.coral : INK
+  g.fillText(`black: ${seatName(seats.b)}${mine === 'b' ? '  ◀ you' : ''}`, gcx - half, gcy - half - 6)
+  // turn dot, top-right of the board
   g.fillStyle = turn === 'w' ? '#fbfaf4' : INK
   g.strokeStyle = INK
   g.lineWidth = 2
-  g.beginPath(); g.arc(gcx + half - 8, gcy - half - 13, 8, 0, Math.PI * 2); g.fill(); g.stroke()
+  g.beginPath(); g.arc(gcx + half - 8, gcy - half - 15, 8, 0, Math.PI * 2); g.fill(); g.stroke()
+  // seated players get leave + new-game chips below the board
+  if (mine !== null) {
+    chip(g, leaveRect(), 'leave')
+    chip(g, newGameRect(), 'new game')
+  }
 }
 
 // ---- factory: build chess wired to this session ----

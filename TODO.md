@@ -8,8 +8,10 @@ Host a table, friends join via room link (`?room=XXXX`), play together.
       dead; ported). Abuse limits: 32 conns/table, 1KB msgs, 30/s rate.
 - [x] Phase 1 — presence SHIPPED: host-a-table chip, `?room=` links, ghost
       cursors with equipped skins + name tags, live headcount
-- [ ] Phase 2 — board games as synced events (chess moves, scrabble placements,
-      card flips)
+- [x] Phase 2 — co-op chess SHIPPED: 2 seats, host-authoritative moves, live
+      spectating, drop-in/out (leave chip, Escape, disconnect auto-free, new game,
+      host migration)
+      - [ ] Extend seat layer to other toys (dice, cards, backgammon)
 - [x] Phase 3 — shared physics SHIPPED: host-authoritative simulation, guests
       send inputs, host broadcasts snapshots (~20/s), guests interpolate +
       predict their held prop (marbles/coins/chips/ball synced)
